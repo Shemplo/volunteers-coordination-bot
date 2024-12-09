@@ -243,19 +243,21 @@ public class CommonChatContext implements ChatContext {
             . filter (activity -> activity.getFrom ().before (now) && activity.getTo ().after (now))
             . findFirst ()
             . orElse (null);
-        sj.add ("<b>Текущая активность:</b> " + (currentActivity == null ? "отсутсвует" : currentActivity.getActivity ()));
+        sj.add ("");
+        sj.add ("<b>Текущая активность:</b>\n" + (currentActivity == null ? "отсутсвует" : currentActivity.getActivity ()));
         if (currentActivity != null) {
-            sj.add ("<i>До " + DateUtils.dateFormat.format (currentActivity.getTo ()) + "</i>");
+            sj.add ("<i>До " + DateUtils.dateFormatNoSeconds.format (currentActivity.getTo ()) + "</i>");
         }
         
         final var nextActivity = event.getTimetable ().getActivities ().stream ()
             . filter (activity -> activity.getFrom ().after (now))
             . findFirst ()
             . orElse (null);
-        sj.add ("<b>Следующая активность:</b> " + (nextActivity == null ? "отсутсвует" : nextActivity.getActivity ()));
+        sj.add ("");
+        sj.add ("<b>Следующая активность:</b>\n" + (nextActivity == null ? "отсутсвует" : nextActivity.getActivity ()));
         if (nextActivity != null) {
-            sj.add ("<i>C " + DateUtils.dateFormat.format (nextActivity.getFrom ()) + "</i>");
-            sj.add ("<i>До " + DateUtils.dateFormat.format (nextActivity.getTo ()) + "</i>");
+            sj.add ("<i>C   " + DateUtils.dateFormatNoSeconds.format (nextActivity.getFrom ()) + "</i>");
+            sj.add ("<i>До " + DateUtils.dateFormatNoSeconds.format (nextActivity.getTo ()) + "</i>");
         }
         
         try {
