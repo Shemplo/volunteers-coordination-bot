@@ -1,8 +1,12 @@
 package ru.itmo.nerc.vcb.bot.chat;
 
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -24,8 +28,10 @@ import ru.itmo.nerc.vcb.bot.chat.task.TaskUtils;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 import ru.itmo.nerc.vcb.bot.user.UserContextService;
 import ru.itmo.nerc.vcb.bot.user.UserRole;
+import ru.itmo.nerc.vcb.cfg.BotEventConfiguration.EventActivity;
 import ru.itmo.nerc.vcb.cfg.BotEventConfiguration.EventGroup;
 import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
+import ru.itmo.nerc.vcb.utils.DateUtils;
 
 @Slf4j
 public class CommonChatContext implements ChatContext {
@@ -227,10 +233,34 @@ public class CommonChatContext implements ChatContext {
     
     private void showEventInfo (Message message) {
         final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
+        Collections.sort (event.getTimetable ().getActivities (), Comparator.comparing (EventActivity::getFrom));
+        
+        final var sj = new StringJoiner ("\n");
+        sj.add ("<b>Событие:</b> " + event.getName ());
+        
+        final var now = new Date ();
+        final var currentActivity = event.getTimetable ().getActivities ().stream ()
+            . filter (activity -> activity.getFrom ().before (now) && activity.getTo ().after (now))
+            . findFirst ()
+            . orElse (null);
+        sj.add ("<b>Текущая активность:</b> " + (currentActivity == null ? "отсутсвует" : currentActivity.getActivity ()));
+        if (currentActivity != null) {
+            sj.add ("<i>До " + DateUtils.dateFormat.format (currentActivity.getTo ()) + "</i>");
+        }
+        
+        final var nextActivity = event.getTimetable ().getActivities ().stream ()
+            . filter (activity -> activity.getFrom ().after (now))
+            . findFirst ()
+            . orElse (null);
+        sj.add ("<b>Следующая активность:</b> " + (nextActivity == null ? "отсутсвует" : nextActivity.getActivity ()));
+        if (nextActivity != null) {
+            sj.add ("<i>C " + DateUtils.dateFormat.format (nextActivity.getFrom ()) + "</i>");
+            sj.add ("<i>До " + DateUtils.dateFormat.format (nextActivity.getTo ()) + "</i>");
+        }
         
         try {
             TelegramBot.getInstance ().sendMessage (chatId, cfg -> {
-                cfg.text ("<b>Событие:</b> " + event.getName ());
+                cfg.text (sj.toString ());
             });
         } catch (TelegramApiException tapie) {
             log.error ("Failed to send message", tapie);

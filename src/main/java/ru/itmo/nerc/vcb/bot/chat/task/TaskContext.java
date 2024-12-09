@@ -2,8 +2,6 @@ package ru.itmo.nerc.vcb.bot.chat.task;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -26,6 +24,7 @@ import ru.itmo.nerc.vcb.bot.user.UserContextService;
 import ru.itmo.nerc.vcb.cfg.BotEventConfiguration;
 import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
 import ru.itmo.nerc.vcb.db.DatabaseService;
+import ru.itmo.nerc.vcb.utils.DateUtils;
 
 @Slf4j
 @Getter
@@ -168,9 +167,6 @@ public class TaskContext {
         return this;
     }
     
-    private final DateFormat dateFormat = new SimpleDateFormat ("dd.MM.yyyy HH:mm:ss");
-    private final DateFormat dateFormatShort = new SimpleDateFormat ("HH:mm:ss");
-    
     public void broadcastForGroup (String group) {
         log.info ("Sending broadcast message to `{}` group...", group);
         
@@ -272,7 +268,7 @@ public class TaskContext {
             
             sj.add (
                     "<i><u>" + eventGroup.getDisplayName () + ":</u></i> @" + changeAuthor.getUsername ()
-                    + " в " + dateFormatShort.format (status.getChangeDate ())
+                    + " в " + DateUtils.dateFormatShort.format (status.getChangeDate ())
                     );
             sj.add (status.getContent ());
         } else if (isTask ()) {
@@ -280,7 +276,7 @@ public class TaskContext {
             final var changeAuthor = userContextService.findContextForExistingUser (status.getAuthorId ());
             
             sj.add ("<i><u>" + eventGroup.getDisplayName () + ":</u></i> " + status.getContent ());
-            sj.add ("⏰ " + dateFormat.format (status.getChangeDate ()));
+            sj.add ("⏰ " + DateUtils.dateFormat.format (status.getChangeDate ()));
             sj.add ("👤 @" + changeAuthor.getUsername ());
         }
         

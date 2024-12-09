@@ -1,5 +1,6 @@
 package ru.itmo.nerc.vcb.cfg;
 
+import java.util.Date;
 import java.util.List;
 
 import lombok.AllArgsConstructor;
@@ -17,6 +18,8 @@ public class BotEventConfiguration {
     
     private List <EventGroup> groups;
     
+    private EventTimetable timetable;
+    
     @ToString
     @Getter @Setter
     @NoArgsConstructor
@@ -29,6 +32,29 @@ public class BotEventConfiguration {
         public String getShortName () {
             return shortName == null ? displayName : shortName;
         }
+        
+    }
+    
+    @ToString
+    @Getter @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EventTimetable {
+        
+        private List <EventActivity> activities;
+        
+    }
+    
+    @ToString
+    @Getter @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EventActivity {
+        
+        private String activity;
+        
+        private Date from;
+        private Date to;
         
     }
     
