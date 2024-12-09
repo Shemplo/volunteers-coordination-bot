@@ -2,8 +2,10 @@ package ru.itmo.nerc.vcb.bot.chat;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 import java.util.StringJoiner;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -34,10 +36,12 @@ import ru.itmo.nerc.vcb.bot.chat.task.TaskUtils;
 import ru.itmo.nerc.vcb.bot.user.UserContextService;
 import ru.itmo.nerc.vcb.bot.user.UserRole;
 import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
+import ru.itmo.nerc.vcb.utils.thread.RunnableActivity;
+import ru.itmo.nerc.vcb.utils.thread.SupervisedRunnable;
 
 @Slf4j
 @NoArgsConstructor (access = AccessLevel.PRIVATE)
-public class InlineQueryProcessor implements TelegramChildBot {
+public class InlineQueryProcessor implements TelegramChildBot, SupervisedRunnable {
     
     private static volatile InlineQueryProcessor instance;
     
@@ -63,6 +67,35 @@ public class InlineQueryProcessor implements TelegramChildBot {
     private final TaskContextService taskContextService = TaskContextService.getInstance ();
     private final TaskStatusChangeService taskStatusChangeService = TaskStatusChangeService.getInstance ();
     private final UserContextService userContextService = UserContextService.getInstance ();
+    
+    private final Queue <Update> updatesQueue = new ConcurrentLinkedQueue <> ();
+    
+    @Override
+    public void run () {
+        while (!Thread.interrupted ()) {
+            try {
+                final var update = updatesQueue.poll ();
+                if (update != null) {
+                    onUpdateReceived (update);
+                } else {
+                    Thread.sleep (100L);
+                }
+            } catch (InterruptedException ie) {
+                // Its' okay
+            } catch (TelegramApiException tapie) {
+                log.error ("Failed to handle inline query", tapie);
+            }
+        }
+    }
+    
+    @Override
+    public RunnableActivity getActivityAndReset () {
+        return updatesQueue.isEmpty () ? RunnableActivity.IDLE: RunnableActivity.RUNNING;
+    }
+    
+    public void addInlineQueryToQueue (Update update) {
+        updatesQueue.add (update);
+    }
     
     @Override
     public boolean onUpdateReceived (Update update) throws TelegramApiException {

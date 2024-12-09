@@ -174,7 +174,7 @@ public class TaskContext {
         log.info ("Sending broadcast message to `{}` group...", group);
         
         try {
-            final var taskStatusMessageService = TaskStatusMessageService.getInstance ();
+            final var taskUpdatesBroadcast = TaskUpdatesBroadcast.getInstance ();
             
             prepareGroupMessage (group, (text, keyboard) -> {
                 for (final var member : UserContextService.getInstance ().findGroupMembers (group)) {
@@ -182,12 +182,7 @@ public class TaskContext {
                         continue;
                     }
                     
-                    final var broadcastMessage = TelegramBot.getInstance ().sendMessage (member.getPrivateChatId (), cfg -> {
-                        cfg.text (text);
-                        cfg.replyMarkup (keyboard);
-                    });
-                    
-                    taskStatusMessageService.addMessage (this, broadcastMessage);
+                    taskUpdatesBroadcast.sendBroadcastMessage (this, member.getPrivateChatId (), text, keyboard);
                 }
             });
         } catch (TelegramApiException tapie) {
@@ -199,19 +194,15 @@ public class TaskContext {
         log.info ("Sending broadcast message update to `{}` group...", group);
         
         try {
+            final var taskUpdatesBroadcast = TaskUpdatesBroadcast.getInstance ();
+            
             prepareGroupMessage (group, (text, keyboard) -> {
                 for (final var member : UserContextService.getInstance ().findGroupMembers (group)) {
                     if (member.getUserId () == authorId) {
                         continue;
                     }
                     
-                    final var statusMessage = TaskStatusMessageService.getInstance ().findByTaskAndChat (id, member.getPrivateChatId ());
-                    if (statusMessage != null) {
-                        TelegramBot.getInstance ().sendMessageEdit (member.getPrivateChatId (), statusMessage.getMessageId (), cfg -> {
-                            cfg.text (text);
-                            cfg.replyMarkup (keyboard);
-                        });
-                    }
+                    taskUpdatesBroadcast.sendBroadcastUpdate (this, member.getPrivateChatId (), text, keyboard);
                 }
             });
         } catch (TelegramApiException tapie) {
