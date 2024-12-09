@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
 import ru.itmo.nerc.vcb.bot.chat.InlineQueryProcessor.ParsedQuery;
 import ru.itmo.nerc.vcb.bot.user.UserContextService;
+import ru.itmo.nerc.vcb.cfg.BotEventConfiguration;
 import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
 import ru.itmo.nerc.vcb.db.DatabaseService;
 
@@ -182,6 +183,7 @@ public class TaskContext {
                         continue;
                     }
                     
+                    log.info ("Broadcast message to @{}...", member.getUsername ());
                     taskUpdatesBroadcast.sendBroadcastMessage (this, member.getPrivateChatId (), text, keyboard);
                 }
             });
@@ -202,6 +204,7 @@ public class TaskContext {
                         continue;
                     }
                     
+                    log.info ("Broadcast update to @{}...", member.getUsername ());
                     taskUpdatesBroadcast.sendBroadcastUpdate (this, member.getPrivateChatId (), text, keyboard);
                 }
             });
@@ -212,37 +215,14 @@ public class TaskContext {
     
     private void prepareGroupMessage (String group, FailableBiConsumer <String, InlineKeyboardMarkup, TelegramApiException> doOnReady) throws TelegramApiException {
         final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
-        final var taskStatusChangeService = TaskStatusChangeService.getInstance ();
-        
         final var chatMember = TelegramBot.getInstance ().getChatMember (chatId, authorId);
+        
         final var sj = prepareShortTaskMessage (chatMember.getUser (), task, type);
         sj.add ("#tasks #tid" + id);
         
         sj.add ("");
         sj.add ("🕵️‍♂️ <b>Текущий статус задачи:</b>");
-        final var eventGroup = event.findGroupByName (group);
-        sj.add ("");
-        
-        final var status = taskStatusChangeService.findMostRecent (id, eventGroup.getShortName ());
-        //log.debug ("Most recent status change for {} task and {} group : {}", id, group, status);
-        
-        if (status == null) {
-            sj.add ("<i><u>" + eventGroup.getDisplayName () + ":</u></i> 🙈 Не заметили задание");
-        } else if (isQuestion ()) {
-            final var changeAuthor = TelegramBot.getInstance ().getChatMember (chatId, status.getAuthorId ());
-            
-            sj.add (
-                    "<i><u>" + eventGroup.getDisplayName () + ":</u></i> @" + changeAuthor.getUser ().getUserName ()
-                    + " в " + dateFormatShort.format (status.getChangeDate ())
-                    );
-            sj.add (status.getContent ());
-        } else if (isTask ()) {
-            final var changeAuthor = TelegramBot.getInstance ().getChatMember (chatId, status.getAuthorId ());
-            
-            sj.add ("<i><u>" + eventGroup.getDisplayName () + ":</u></i> " + status.getContent ());
-            sj.add ("⏰ " + dateFormat.format (status.getChangeDate ()));
-            sj.add ("👤 @" + changeAuthor.getUser ().getUserName ());
-        }
+        appendGroupStatus (sj, group, event);
         
         doOnReady.accept (sj.toString (), prepareMarkup ());
     }
@@ -252,8 +232,6 @@ public class TaskContext {
         
         try {
             final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
-            final var taskStatusChangeService = TaskStatusChangeService.getInstance ();
-            
             final var chatMember = TelegramBot.getInstance ().getChatMember (chatId, authorId);
             
             final var sj = prepareShortTaskMessage (chatMember.getUser (), task, type);
@@ -262,29 +240,7 @@ public class TaskContext {
             sj.add ("");
             sj.add ("🕵️‍♂️ <b>Текущий статус задачи:</b>");
             for (final var group : groups) {
-                final var eventGroup = event.findGroupByName (group);
-                sj.add ("");
-                
-                final var status = taskStatusChangeService.findMostRecent (id, eventGroup != null ? eventGroup.getShortName () : "");
-                //log.debug ("Most recent status change for {} task and {} group : {}", id, group, status);
-                
-                if (status == null) {
-                    sj.add ("<i><u>" + eventGroup.getDisplayName () + ":</u></i> 🙈 Не заметили задание");
-                } else if (isQuestion ()) {
-                    final var changeAuthor = TelegramBot.getInstance ().getChatMember (chatId, status.getAuthorId ());
-                    
-                    sj.add (
-                        "<i><u>" + eventGroup.getDisplayName () + ":</u></i> @" + changeAuthor.getUser ().getUserName ()
-                        + " в " + dateFormatShort.format (status.getChangeDate ())
-                    );
-                    sj.add (status.getContent ());
-                } else if (isTask ()) {
-                    final var changeAuthor = TelegramBot.getInstance ().getChatMember (chatId, status.getAuthorId ());
-                    
-                    sj.add ("<i><u>" + eventGroup.getDisplayName () + ":</u></i> " + status.getContent ());
-                    sj.add ("⏰ " + dateFormat.format (status.getChangeDate ()));
-                    sj.add ("👤 @" + changeAuthor.getUser ().getUserName ());
-                }
+                appendGroupStatus (sj, group, event);
             }
             
             final var markup = prepareMarkup ();
@@ -296,6 +252,39 @@ public class TaskContext {
         } catch (TelegramApiException tapie) {
             log.error ("Failed to send message", tapie);
         }
+    }
+    
+    private StringJoiner appendGroupStatus (StringJoiner sj, String group, BotEventConfiguration event) {
+        final var taskStatusChangeService = TaskStatusChangeService.getInstance ();
+        final var userContextService = UserContextService.getInstance ();
+        
+        final var eventGroup = event.findGroupByName (group);
+        sj.add ("");
+        
+        final var status = taskStatusChangeService.findMostRecent (id, eventGroup.getShortName ());
+        //log.debug ("Most recent status change for {} task and {} group : {}", id, group, status);
+        
+        if (status == null) {
+            sj.add ("<i><u>" + eventGroup.getDisplayName () + ":</u></i> 🙈 Не заметили задание");
+        } else if (isQuestion ()) {
+            //final var changeAuthor = TelegramBot.getInstance ().getChatMember (chatId, status.getAuthorId ());
+            final var changeAuthor = userContextService.findContextForExistingUser (status.getAuthorId ());
+            
+            sj.add (
+                    "<i><u>" + eventGroup.getDisplayName () + ":</u></i> @" + changeAuthor.getUsername ()
+                    + " в " + dateFormatShort.format (status.getChangeDate ())
+                    );
+            sj.add (status.getContent ());
+        } else if (isTask ()) {
+            //final var changeAuthor = TelegramBot.getInstance ().getChatMember (chatId, status.getAuthorId ());
+            final var changeAuthor = userContextService.findContextForExistingUser (status.getAuthorId ());
+            
+            sj.add ("<i><u>" + eventGroup.getDisplayName () + ":</u></i> " + status.getContent ());
+            sj.add ("⏰ " + dateFormat.format (status.getChangeDate ()));
+            sj.add ("👤 @" + changeAuthor.getUsername ());
+        }
+        
+        return sj;
     }
     
     private InlineKeyboardMarkup prepareMarkup () {

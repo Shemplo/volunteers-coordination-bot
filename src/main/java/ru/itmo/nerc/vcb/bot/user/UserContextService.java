@@ -34,11 +34,24 @@ public class UserContextService {
     private final Map <Long, UserContext> id2context = new ConcurrentHashMap <> ();
     
     public UserContext findContextForUser (User user) {
-        return id2context.computeIfAbsent (user.getId (), __ -> {
+        final var userContext = id2context.computeIfAbsent (user.getId (), __ -> {
             final var context = new UserContext (user);
             
             return context;
         });
+        
+        if (user.getUserName () != null) {
+            userContext.setUsername (user.getUserName ());
+        }
+        
+        return userContext;
+    }
+    
+    public UserContext findContextForExistingUser (long userId) {
+        final var tmpUser = new User ();
+        tmpUser.setId (userId);
+        
+        return findContextForUser (tmpUser);
     }
     
     public List <UserContext> findGroupMembers (String group) {
