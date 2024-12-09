@@ -1,7 +1,8 @@
 package ru.itmo.nerc.vcb.bot.chat;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedList;
+import java.util.Queue;
 
 import org.antlr.v4.runtime.misc.Pair;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -16,9 +17,9 @@ import ru.itmo.nerc.vcb.bot.TelegramBot;
 @UtilityClass
 public class ChatUtils {
     
-    public static List <Pair <String, String>> fetchCommand (Message message) {
+    public static Queue <Pair <String, String>> fetchCommand (Message message) {
         if (!message.hasEntities ()) {
-            return List.of ();
+            return new LinkedList <> ();
         }
         
         final var botUsername = "@" + TelegramBot.getInstance ().getBotUsername ();
@@ -37,7 +38,7 @@ public class ChatUtils {
         
         commands.add (new MessageEntity ("", message.getText ().length (), 0));
         
-        final var parsed = new ArrayList <Pair <String, String>> ();
+        final var parsed = new LinkedList <Pair <String, String>> ();
         for (int i = 0; i < commands.size () - 1; i++) {
             final var current = commands.get (i);
             final var next = commands.get (i + 1);

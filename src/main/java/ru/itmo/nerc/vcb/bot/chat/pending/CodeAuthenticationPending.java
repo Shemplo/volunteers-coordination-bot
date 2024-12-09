@@ -42,10 +42,12 @@ public class CodeAuthenticationPending extends AbstractChatPending {
     }
     
     @Override
-    public void onPendigActivated () throws TelegramApiException {
+    public ChatPendingResult onPendigActivated () throws TelegramApiException {
         TelegramBot.getInstance ().sendMessage (chat.getChatId (), cfg -> {
             cfg.text ("Введите код аутентификации");
         });
+        
+        return ChatPendingResult.KEEP;
     }
     
     @Override

@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.Deque;
 import java.util.List;
+import java.util.Queue;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.regex.Pattern;
@@ -21,6 +22,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
 import ru.itmo.nerc.vcb.bot.chat.pending.ChatPending;
+import ru.itmo.nerc.vcb.bot.chat.pending.DelayedCommandProcessingPending;
 import ru.itmo.nerc.vcb.bot.chat.task.TaskContext;
 import ru.itmo.nerc.vcb.bot.chat.task.TaskContextService;
 import ru.itmo.nerc.vcb.bot.chat.task.TaskStatusChangeService;
@@ -100,21 +102,7 @@ public class CommonChatContext implements ChatContext {
                     }
                 }
             } else if (!commands.isEmpty ()) {
-                try {
-                    try {
-                        for (final var command : commands) {
-                            processCommand (user, message, command);
-                        }
-                        
-                        return true;
-                    } catch (CommandProcessingException cpe) {
-                        processCommandProcessingException (message, cpe);
-                        return false;
-                    }
-                } catch (TelegramApiException tapie) {
-                    log.error ("Failed to send Telegram request", tapie);
-                    return false;
-                }
+                return processCommandsOneByOne (user, message, commands);
             }
         }
         
@@ -132,6 +120,34 @@ public class CommonChatContext implements ChatContext {
         } catch (CommandProcessingException cpe) {
             processCommandProcessingException (update.getMessage (), cpe);
             return true;
+        }
+    }
+    
+    protected boolean processCommandsOneByOne (UserContext user, Message message, Queue <Pair <String, String>> commands) {
+        try {
+            try {
+                while (!commands.isEmpty ()) {
+                    final var command = commands.poll ();
+                    processCommand (user, message, command);
+                }
+                
+                return true;
+            } catch (CommandProcessingException cpe) {
+                if (cpe instanceof PendingAddedException) {
+                    while (!commands.isEmpty ()) {
+                        final var command = commands.poll ();
+                        pendings.add (new DelayedCommandProcessingPending (this, user, message, command));
+                    }
+                    
+                    return true;
+                } else {
+                    processCommandProcessingException (message, cpe);
+                    return false;
+                }
+            }
+        } catch (TelegramApiException tapie) {
+            log.error ("Failed to send Telegram request", tapie);
+            return false;
         }
     }
     
@@ -197,7 +213,13 @@ public class CommonChatContext implements ChatContext {
         log.info ("Current pending stack: {}", pendings.stream ().map (p -> p.getClass ()).toList ());
         if (!pendings.isEmpty ()) {
             log.info ("Pending is activated", pendings.peek ().getClass ());
-            pendings.peek ().onPendigActivated ();
+            final var resolvedAutomatically = switch (pendings.peek ().onPendigActivated ()) {
+                case RESOLVED     -> pollPendings (1);
+                case RESOLVED_ALL -> pollPendings (pendings.size ());
+                default -> false;
+            };
+            
+            resolvedAtLeastOne = resolvedAtLeastOne || resolvedAutomatically;
         }
         
         return resolvedAtLeastOne;

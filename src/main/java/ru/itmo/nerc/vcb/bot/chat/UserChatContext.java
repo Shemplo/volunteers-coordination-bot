@@ -34,21 +34,7 @@ public class UserChatContext extends CommonChatContext {
             final var user = userContextService.findContextForUser (message.getFrom ());
             
             if (!commands.isEmpty ()) {
-                try {
-                    try {
-                        for (final var command : commands) {
-                            processCommand (user, message, command);
-                        }
-                        
-                        return true;
-                    } catch (CommandProcessingException cpe) {
-                        processCommandProcessingException (message, cpe);
-                        return false;
-                    }
-                } catch (TelegramApiException tapie) {
-                    log.error ("Failed to send Telegram request", tapie);
-                    return false;
-                }
+                return processCommandsOneByOne (user, message, commands);
             }
         }
         
@@ -80,7 +66,7 @@ public class UserChatContext extends CommonChatContext {
             //throw new CommandProcessingException ("Необходимо передать параметер <code>[code]</code>");
             try {
                 pendings.add (new CodeAuthenticationPending (this, user));
-                return;
+                throw new PendingAddedException (CodeAuthenticationPending.class);
             } catch (TelegramApiException tapie) {
                 log.error ("Failed to add " + CodeAuthenticationPending.class.getSimpleName () + " pending", tapie);
             }

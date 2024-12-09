@@ -13,7 +13,7 @@ public interface ChatPending extends Serializable {
     
     boolean isBlocking ();
     
-    void onPendigActivated () throws TelegramApiException;
+    ChatPendingResult onPendigActivated () throws TelegramApiException;
     
     void onPendingResolved () throws TelegramApiException;
     
