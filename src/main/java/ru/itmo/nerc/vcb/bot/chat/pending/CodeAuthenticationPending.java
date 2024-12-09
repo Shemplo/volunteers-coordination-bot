@@ -31,8 +31,8 @@ public class CodeAuthenticationPending extends AbstractChatPending {
         if (update.hasMessage () && update.getMessage ().hasText ()) {
             final var message = update.getMessage ();
             
-            if (chat instanceof UserChatContext userChat) {
-                userChat.authenticateUser (user, message, message.getText ());
+            if (chat instanceof UserChatContext ucc) {
+                ucc.authenticateUser (user, message, message.getText ());
             }
             
             return ChatPendingResult.RESOLVED;

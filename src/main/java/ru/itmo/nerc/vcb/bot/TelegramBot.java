@@ -145,7 +145,17 @@ public class TelegramBot extends TelegramLongPollingBot {
         executeAsync (message.build ());
     }
     
-    public void sendReplyMessage (Message replyTo, Consumer <SendMessageBuilder> configurer) throws TelegramApiException {
+    public Message sendReplyMessage (Message replyTo, Consumer <SendMessageBuilder> configurer) throws TelegramApiException {
+        final var message = SendMessage.builder ()
+            .chatId (replyTo.getChatId ())
+            .replyToMessageId (replyTo.getMessageId ())
+            .parseMode ("HTML");
+        
+        configurer.accept (message);
+        return execute (message.build ());
+    }
+    
+    public void sendReplyMessageAsync (Message replyTo, Consumer <SendMessageBuilder> configurer) throws TelegramApiException {
         final var message = SendMessage.builder ()
             .chatId (replyTo.getChatId ())
             .replyToMessageId (replyTo.getMessageId ())

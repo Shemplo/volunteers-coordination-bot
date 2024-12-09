@@ -22,6 +22,8 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
 import ru.itmo.nerc.vcb.bot.chat.pending.ChatPending;
+import ru.itmo.nerc.vcb.bot.chat.pending.ChooseSubscriptionGroupPending;
+import ru.itmo.nerc.vcb.bot.chat.pending.CodeAuthenticationPending;
 import ru.itmo.nerc.vcb.bot.chat.pending.DelayedCommandProcessingPending;
 import ru.itmo.nerc.vcb.bot.chat.task.TaskContext;
 import ru.itmo.nerc.vcb.bot.chat.task.TaskContextService;
@@ -65,19 +67,17 @@ public class CommonChatContext implements ChatContext {
             final var callback = update.getCallbackQuery ().getData ();
             log.info ("Callback: {}", callback);
             final var commandFinishIndex = callback.indexOf (' ');
-            if (commandFinishIndex == -1) {
-                return false;
-            }
-            
-            final var command = callback.substring (0, commandFinishIndex);
-            final var argument = callback.substring (commandFinishIndex + 1);
-            
-            try {
-                processCommand (user, message, new Pair <> (command, argument));
-                return true;
-            } catch (CommandProcessingException cpe) {
-                processCommandProcessingException (message, cpe);
-                return false;
+            if (callback.startsWith ("/") && commandFinishIndex != -1) {
+                final var command = callback.substring (0, commandFinishIndex);
+                final var argument = callback.substring (commandFinishIndex + 1);
+                
+                try {
+                    processCommand (user, message, new Pair <> (command, argument));
+                    return true;
+                } catch (CommandProcessingException cpe) {
+                    processCommandProcessingException (message, cpe);
+                    return false;
+                }
             }
         } else if (update.hasMessage () && update.getMessage ().hasText ()) {
             final var message = update.getMessage ();
@@ -337,7 +337,16 @@ public class CommonChatContext implements ChatContext {
         }
     }
     
-    private void subscribeToGroup (UserContext user, Message message, String groupName) throws CommandProcessingException {
+    public void subscribeToGroup (UserContext user, Message message, String groupName) throws CommandProcessingException {
+        if (groupName != null && groupName.length () == 0) {
+            try {
+                pendings.add (new ChooseSubscriptionGroupPending (this, user, message));
+                throw new PendingAddedException (ChooseSubscriptionGroupPending.class);
+            } catch (TelegramApiException tapie) {
+                log.error ("Failed to add " + CodeAuthenticationPending.class.getSimpleName () + " pending", tapie);
+            }
+        }
+        
         final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
         final var group = event.findGroupByName (groupName);
         
@@ -358,9 +367,9 @@ public class CommonChatContext implements ChatContext {
         try {
             TelegramBot.getInstance ().sendReplyMessage (message, cfg -> {
                 if (groupName != null) {
-                    cfg.text ("Теперь Вы подписаны на уведомления для группы: <b>" + group.getDisplayName () + "</b>");
+                    cfg.text ("Вы присединилсь к группе <b>" + group.getDisplayName () + "</b> и будете получать уведомления о задачах, которые ей адресованы");
                 } else {
-                    cfg.text ("Вы отменили подписку на уведомления для всех групп");
+                    cfg.text ("Вы покинули группу и больше не будете получать уведомления");
                 }
             });
         } catch (TelegramApiException tapie) {
