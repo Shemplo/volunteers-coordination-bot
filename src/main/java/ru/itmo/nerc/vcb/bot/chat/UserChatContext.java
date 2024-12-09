@@ -11,6 +11,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
+import ru.itmo.nerc.vcb.bot.chat.pending.CodeAuthenticationPending;
 import ru.itmo.nerc.vcb.bot.chat.task.TaskContext;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 import ru.itmo.nerc.vcb.bot.user.UserRole;
@@ -61,7 +62,7 @@ public class UserChatContext extends CommonChatContext {
     }
     
     @Override
-    protected void processCommand (UserContext user, Message message, Pair <String, String> command) throws CommandProcessingException, TelegramApiException {
+    public void processCommand (UserContext user, Message message, Pair <String, String> command) throws CommandProcessingException, TelegramApiException {
         user.setPrivateChatId (chatId);
         
         switch (command.a) {
@@ -74,9 +75,15 @@ public class UserChatContext extends CommonChatContext {
         };
     }
     
-    private void authenticateUser (UserContext user, Message message, String code) throws CommandProcessingException {
+    public void authenticateUser (UserContext user, Message message, String code) throws CommandProcessingException {
         if (code.length () == 0) {
-            throw new CommandProcessingException ("Необходимо передать параметер <code>[code]</code>");
+            //throw new CommandProcessingException ("Необходимо передать параметер <code>[code]</code>");
+            try {
+                pendings.add (new CodeAuthenticationPending (this, user));
+                return;
+            } catch (TelegramApiException tapie) {
+                log.error ("Failed to add " + CodeAuthenticationPending.class.getSimpleName () + " pending", tapie);
+            }
         }
         
         final var credentials = ConfigurationHolder.getConfigurationFromSingleton ().getCredentials ();

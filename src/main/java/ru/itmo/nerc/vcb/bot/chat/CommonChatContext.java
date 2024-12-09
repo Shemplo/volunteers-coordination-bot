@@ -4,9 +4,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.Deque;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.StringJoiner;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -41,7 +41,7 @@ public class CommonChatContext implements ChatContext {
     @Getter
     protected final long chatId;
     
-    protected final Deque <ChatPending> pendings = new LinkedList <> ();
+    protected final Deque <ChatPending> pendings = new ConcurrentLinkedDeque <> ();
     
     public CommonChatContext (Chat chat) {
         this.chatId = chat.getId ();
@@ -118,14 +118,25 @@ public class CommonChatContext implements ChatContext {
             }
         }
         
-        return false;
-    }
-    
-    protected void persist () {
+        if (pendings.isEmpty ()) {
+            return false;
+        }
         
+        try {
+            log.info ("Call udpdate on pending {}", pendings.peek ().getClass ());
+            return switch (pendings.peek ().onUpdateReceived (update)) {
+                case RESOLVED     -> pollPendings (1);
+                case RESOLVED_ALL -> pollPendings (pendings.size ());
+                case KEEP         -> false; // Do nothing, pending is not resolved
+            };
+        } catch (CommandProcessingException cpe) {
+            processCommandProcessingException (update.getMessage (), cpe);
+            return true;
+        }
     }
     
-    protected void processCommand (UserContext user, Message message, Pair <String, String> command) throws CommandProcessingException, TelegramApiException {
+    @Override
+    public void processCommand (UserContext user, Message message, Pair <String, String> command) throws CommandProcessingException, TelegramApiException {
         switch (command.a) {
             case ANSWER_TASK_COMMAND -> checkAndCall (user, UserRole.PARTICIPANT, () -> answerToTask (user, message, command.b));
             case "/createtask" -> checkAndCall (user, UserRole.MODERATOR, () -> createTask (user, message, command.b));
@@ -139,9 +150,15 @@ public class CommonChatContext implements ChatContext {
     }
     
     protected void processCommandProcessingException (Message message, CommandProcessingException exception) throws TelegramApiException {
-        TelegramBot.getInstance ().sendReplyMessage (message, cfg -> {
-            cfg.text (exception.getMessage ());
-        });
+        if (message != null) {
+            TelegramBot.getInstance ().sendReplyMessage (message, cfg -> {
+                cfg.text (exception.getMessage ());
+            });
+        } else {
+            TelegramBot.getInstance ().sendMessage (chatId, cfg -> {
+                cfg.text (exception.getMessage ());
+            });
+        }
     }
     
     protected boolean checkAndCall (
@@ -153,8 +170,37 @@ public class CommonChatContext implements ChatContext {
             throw new CommandProcessingException ("Недостаточно прав для выполнениия этой операции");
         }
         
-        call.run ();
-        return true;
+        //call.run ();
+        //return true;
+        if (pendings.isEmpty () || !pendings.peek ().isBlocking ()) {
+            call.run ();
+            return true;
+        } else {
+            TelegramBot.getInstance ().sendMessage (chatId, cfg -> {
+                cfg.text ("Закончите предыдущее действие перед тем как вызвать новую команду ⚠");
+            });
+            
+            return true;
+        }
+    }
+    
+    private boolean pollPendings (int amount) throws TelegramApiException {
+        boolean resolvedAtLeastOne = false;
+        for (int i = 0; i < amount && !pendings.isEmpty (); i++) {
+            final var pendign = pendings.poll ();
+            pendign.onPendingResolved ();
+            resolvedAtLeastOne = true;
+            
+            log.info ("Pending {} was resolved", pendign.getClass () );
+        }
+        
+        log.info ("Current pending stack: {}", pendings.stream ().map (p -> p.getClass ()).toList ());
+        if (!pendings.isEmpty ()) {
+            log.info ("Pending is activated", pendings.peek ().getClass ());
+            pendings.peek ().onPendigActivated ();
+        }
+        
+        return resolvedAtLeastOne;
     }
     
     private void answerToTask (UserContext user, Message message, String query) throws CommandProcessingException {

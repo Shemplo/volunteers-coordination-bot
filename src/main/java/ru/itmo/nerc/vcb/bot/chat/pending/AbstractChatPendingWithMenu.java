@@ -5,6 +5,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import ru.itmo.nerc.vcb.bot.chat.ChatContext;
 import ru.itmo.nerc.vcb.bot.chat.ChatUtils;
+import ru.itmo.nerc.vcb.bot.user.UserContext;
 
 public abstract class AbstractChatPendingWithMenu extends AbstractChatPending {
     
@@ -12,8 +13,8 @@ public abstract class AbstractChatPendingWithMenu extends AbstractChatPending {
     
     protected Message message;
     
-    public AbstractChatPendingWithMenu (ChatContext chat) {
-        super (chat);
+    public AbstractChatPendingWithMenu (ChatContext chat, UserContext user) {
+        super (chat, user);
     }
     
     @Override
