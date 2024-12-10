@@ -56,6 +56,8 @@ public class UserChatContext extends CommonChatContext {
             case "/help" -> checkAndCall (user, UserRole.UNKNOWN, () -> printHelp (user));
             case "/mygroup" -> checkAndCall (user, UserRole.PARTICIPANT, () -> printUserGroupInfo (user));
             case "/start" -> checkAndCall (user, UserRole.UNKNOWN, () -> printStartMessage ());
+            case "/subscribe", "/join" -> checkAndCall (user, UserRole.PARTICIPANT, () -> subscribeToGroup (user, message, command.b));
+            case "/unsubscribe", "/leave" -> checkAndCall (user, UserRole.PARTICIPANT, () -> subscribeToGroup (user, message, null));
             
             default -> super.processCommand (user, message, command);
         };
@@ -104,19 +106,21 @@ public class UserChatContext extends CommonChatContext {
     private void printHelp (UserContext user) throws CommandProcessingException {
         final var sj = new StringJoiner ("\n");
         sj.add ("<b>Базовые команды:</b>");
-        sj.add ("/help - Показать сообщение с доступными командами");
-        sj.add ("/authenticate <code>[code]</code> - Сменить свою роль в зависимости от введённого кода");
+        sj.add ("<i>P </i> /help - Показать сообщение с доступными командами");
+        sj.add ("<i>P </i> /authenticate <code>[code?]</code> - Сменить свою роль в зависимости от введённого кода");
         //sj.add ("/dropmessage - Удалить сообщение, которое содержит эту команду");
         
         if (user.hasPermissions (UserRole.PARTICIPANT)) {
             sj.add ("");
             sj.add ("<b>Команды для волонтёров:</b>");
-            sj.add ("/subscribe <code>[group name]</code> - Сменить подписку на получение уведомлений для указанной группы");
-            sj.add ("/unsubscribe - Отменить подписку на получение уведомлений (если такая была)");
-            sj.add ("/mygroup - Показать информацию о группе, на уведомления которой вы подписаны");
-            sj.add ("/eventinfo - Показать информацию о текущем событии");
+            sj.add ("<i>P </i> /subscribe <code>[group name?]</code> - Сменить подписку на получение уведомлений для указанной группы (присоединиться к группе)");
+            sj.add ("<i>P </i> /join <code>[group name?]</code> - То же самое, что и <code>subscribe</code>");
+            sj.add ("<i>P </i> /unsubscribe - Отменить подписку на получение уведомлений, если она была (покинуть группу)");
+            sj.add ("<i>P </i> /leave - То же самое, что и <code>unsubscribe</code>");
+            sj.add ("<i>P </i> /mygroup - Показать информацию о группе, на уведомления которой вы подписаны");
+            sj.add ("<i>PG</i> /eventinfo - Показать информацию о текущем событии");
             sj.add (
-                ANSWER_TASK_COMMAND + " <code>[answer parameters]</code> - Отправить ответ на задачу:\n"
+                "<i>PG</i> " + ANSWER_TASK_COMMAND + " <code>[answer parameters]</code> - Отправить ответ на задачу:\n"
                 + "* <code>[id]</code> - Идентификатор задачи\n"
                 + "* <code>[answer]</code> - Содержание ответа"
             );
@@ -126,12 +130,30 @@ public class UserChatContext extends CommonChatContext {
             sj.add ("");
             sj.add ("<b>Команды для модераторов:</b>");
             sj.add (
-                "/createtask <code>[task parameters]</code> - Создать задачу (или вопрос) по описанию:\n"
+                "<i>PG</i> /createtask <code>[task parameters]</code> - Создать задачу (или вопрос) по описанию:\n"
                 + "* <code>[task]</code> - содержание задачи (вопрос)\n"
                 + "* <code>[type]</code> - <code>" + TaskContext.TYPE_TASK + "</code> или <code>" + TaskContext.TYPE_QUESTION + "</code>\n"
                 + "* <code>(halls)</code> - список групп, которые включить/исключить"
             );
+            sj.add (
+                "<i>PG</i> /edittask <code>[task parameters]</code> - Изменить задачу (или вопрос) по описанию:\n"
+                + "* <code>[id]</code> - Идентификатор существующей задачи (вопроса)\n"
+                + "* Остальные параметры как у <code>createtask</code>"
+            );
+            sj.add (
+                "<i>PG</i> /activationtask <code>[task parameters]</code> - Приостановить или возобновить задачу (или вопрос) по описанию:\n"
+                + "* <code>[id]</code> - Идентификатор существующей задачи (вопроса)"
+            );
         }
+        
+        sj.add ("");
+        sj.add ("<i>Буквы перед командой:</i>");
+        sj.add ("<i>P</i> - Команда доступна в личных сообщениях");
+        sj.add ("<i>G</i> - Команда доступна в групповом чате телеграма");
+        
+        sj.add ("");
+        sj.add ("<i>Прочие обозначения:</i>");
+        sj.add ("Символ <code>?</code> у параметра - Если параметр отсутсвует в сообщении, то он будет запрошен в интерактивном режиме");
         
         try {
             TelegramBot.getInstance ().sendMessage (chatId, cfg -> {

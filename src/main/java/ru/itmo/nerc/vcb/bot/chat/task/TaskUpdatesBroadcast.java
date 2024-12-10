@@ -71,13 +71,21 @@ public class TaskUpdatesBroadcast implements SupervisedRunnable {
         });
     }
     
-    public void sendBroadcastUpdate (TaskContext task, long chatId, String text, InlineKeyboardMarkup keyboard) {
+    public void sendBroadcastUpdate (TaskContext task, boolean taskEdited, long chatId, String text, InlineKeyboardMarkup keyboard) {
         tasksQueue.add (() -> {
             final var statusMessage = TaskStatusMessageService.getInstance ().findByTaskAndChat (task.getId (), chatId);
+            final var bot = TelegramBot.getInstance ();
+            
             if (statusMessage != null) {
-                TelegramBot.getInstance ().sendMessageEdit (chatId, statusMessage.getMessageId (), cfg -> {
+                bot.sendMessageEdit (chatId, statusMessage.getMessageId (), cfg -> {
                     cfg.replyMarkup (keyboard);
                     cfg.text (text);
+                });
+            }
+            
+            if (taskEdited) {
+                bot.sendMessage (chatId, cfg -> {
+                    cfg.text ("‼️ Задача #tid" + task.getId () + " была изменена. Проверьте, что ответ группы, в которой вы состоите, актуален и соответствует изменению");
                 });
             }
         });

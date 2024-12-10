@@ -1,4 +1,4 @@
-package ru.itmo.nerc.vcb.utils;
+package ru.itmo.nerc.vcb.db;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;

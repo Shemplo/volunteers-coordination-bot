@@ -2,15 +2,16 @@ package ru.itmo.nerc.vcb.bot.chat.task;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.StringJoiner;
 
 import org.apache.commons.lang3.function.FailableBiConsumer;
-import org.apache.commons.lang3.function.FailableConsumer;
 import org.telegram.telegrambots.meta.api.objects.Message;
-import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -20,11 +21,12 @@ import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
 import ru.itmo.nerc.vcb.bot.chat.InlineQueryProcessor.ParsedQuery;
+import ru.itmo.nerc.vcb.bot.user.UserContext;
 import ru.itmo.nerc.vcb.bot.user.UserContextService;
 import ru.itmo.nerc.vcb.cfg.BotEventConfiguration;
 import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
 import ru.itmo.nerc.vcb.db.DatabaseService;
-import ru.itmo.nerc.vcb.utils.DateUtils;
+import ru.itmo.nerc.vcb.db.DateUtils;
 
 @Slf4j
 @Getter
@@ -47,12 +49,15 @@ public class TaskContext {
     private volatile String type;
     private volatile List <String> groups = List.of ();
     
-    public TaskContext (User author, Message message, ParsedQuery query) {
+    private volatile Long stateEditorId;
+    private volatile Date stateChangeDate;
+    
+    public TaskContext (UserContext author, Message message, ParsedQuery query) {
         this.chatId = message.getChatId ();
         this.messageId = message.getMessageId ();
-        this.authorId = author.getId ();
+        this.authorId = author.getUserId ();
         
-        this.groups = query.getGroups ();
+        this.groups = query.getIncludeGroups ();
         this.task = query.getTask ();
         this.type = query.getType ();
         this.state = TaskState.CREATED;
@@ -60,26 +65,31 @@ public class TaskContext {
         this.id = insertAndGetId (chatId, messageId, authorId, state);
         
         // This will cause `persist` and `updateMessage` methods to be called
-        setState (TaskState.ENABLED);
+        setState (null, TaskState.ENABLED);
     }
     
-    public TaskContext (long taskId) {
-        this.id = taskId;
+    public TaskContext (ResultSet queryResult) throws SQLException {
+        id = queryResult.getLong ("id");
+
+        chatId = queryResult.getLong ("chat_id");
+        messageId = queryResult.getInt ("message_id");
+        authorId = queryResult.getLong ("author_id");
         
-        loadFromDatabaseAndDo (queryResult -> {
-            chatId = queryResult.getLong ("chat_id");
-            messageId = queryResult.getInt ("message_id");
-            authorId = queryResult.getLong ("author_id");
-            
-            task = queryResult.getString ("task");
-            type = queryResult.getString ("type");
-            
-            final var stateName = queryResult.getString ("state");
-            state = TaskState.parseOrDefault (stateName, TaskState.ENABLED);
-            
-            final var groupsString = queryResult.getString ("groups");
-            groups = groupsString == null ? List.of () : Arrays.asList (groupsString.split (","));
-        });
+        task = queryResult.getString ("task");
+        type = queryResult.getString ("type");
+        
+        final var stateName = queryResult.getString ("state");
+        state = TaskState.parseOrDefault (stateName, TaskState.ENABLED);
+        
+        final var groupsString = queryResult.getString ("groups");
+        groups = groupsString == null || groupsString.length () == 0 ? List.of () : Arrays.asList (groupsString.split (","));
+        
+        stateEditorId = queryResult.getLong ("state_editor_id");
+        if (queryResult.wasNull ()) {
+            stateEditorId = null;
+        }
+        
+        stateChangeDate = queryResult.getDate ("state_change_date");
     }
     
     private Long insertAndGetId (long chatId, int messageId, long authorId, TaskState state) {
@@ -112,35 +122,29 @@ public class TaskContext {
         });
     }
     
-    private boolean loadFromDatabaseAndDo (FailableConsumer <ResultSet, SQLException> consumer) {
-        return DatabaseService.getInstance ().mapWrappedOrNull (connection -> {
-            final var fetchTaskQuery = String.format ("SELECT * FROM `task` WHERE `id` = %d", id);
-            try (
-                final var fetchUserStatement = connection.prepareStatement (fetchTaskQuery);
-                final var queryResult = fetchUserStatement.executeQuery ();
-            ) {
-                if (queryResult.next ()) {
-                    if (consumer != null) {
-                        consumer.accept (queryResult);
-                    }
-                    
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-        });
-    }
-    
     private void persist () {
         synchronized (this) {
             DatabaseService.getInstance ().doWrapped (connection -> {
-                try (final var insertStatement = connection.prepareStatement ("UPDATE task SET state = ?, task = ?, type = ?, groups = ? WHERE id = ?")) {
+                try (final var insertStatement = connection.prepareStatement (
+                    "UPDATE task SET state = ?, task = ?, type = ?, groups = ?, state_editor_id = ?, state_change_date = ? WHERE id = ?"
+                )) {
                     int i = 1;
                     insertStatement.setString (i++, state.name ());
                     insertStatement.setString (i++, task);
                     insertStatement.setString (i++, type);
                     insertStatement.setString (i++, String.join (",", groups));
+                    if (stateEditorId == null) {
+                        insertStatement.setNull (i++, Types.BIGINT);
+                    } else {
+                        insertStatement.setLong (i++, stateEditorId);
+                    }
+                    
+                    if (stateChangeDate == null) {
+                        insertStatement.setNull (i++, Types.DATE);
+                    } else {
+                        insertStatement.setDate (i++, new java.sql.Date (stateChangeDate.getTime ()));
+                    }
+                    
                     insertStatement.setLong (i++, id);
                     insertStatement.execute ();
                 }
@@ -156,9 +160,55 @@ public class TaskContext {
         return TYPE_TASK.equals (type);
     }
     
-    public TaskContext setState (TaskState state) {
+    public boolean isEnabled () {
+        return state == TaskState.CREATED || state == TaskState.ENABLED;
+    }
+    
+    public boolean isDisabled () {
+        return state == TaskState.DISABLED;
+    }
+    
+    public TaskContext setState (UserContext editor, TaskState state) {
         if (this.state != state && state != null) {
             this.state = state;
+            
+            if (editor != null) {
+                stateEditorId = editor.getUserId ();
+                stateChangeDate = new Date ();
+            }
+            
+            persist ();
+            updateMessage ();
+        }
+        
+        return this;
+    }
+    
+    public TaskContext setTask (String task) {
+        if (!Objects.equals (this.task, task) && task != null) {
+            this.task = task;
+            
+            persist ();
+            updateMessage ();
+        }
+        
+        return this;
+    }
+    
+    public TaskContext setType (String type) {
+        if (!Objects.equals (this.type, type) && type != null) {
+            this.type = type;
+            
+            persist ();
+            updateMessage ();
+        }
+        
+        return this;
+    }
+    
+    public TaskContext setGroups (List <String> groups) {
+        if (!Objects.equals (this.groups, groups) && groups != null) {
+            this.groups = List.copyOf (groups);
             
             persist ();
             updateMessage ();
@@ -188,7 +238,7 @@ public class TaskContext {
         }
     }
     
-    public void broadcastUpdateForGroup (String group) {
+    public void broadcastUpdateForGroup (String group, boolean taskEdited) {
         log.info ("Sending broadcast message update to `{}` group...", group);
         
         try {
@@ -201,7 +251,7 @@ public class TaskContext {
                     }
                     
                     log.info ("Broadcast update to @{}...", member.getUsername ());
-                    taskUpdatesBroadcast.sendBroadcastUpdate (this, member.getPrivateChatId (), text, keyboard);
+                    taskUpdatesBroadcast.sendBroadcastUpdate (this, taskEdited, member.getPrivateChatId (), text, keyboard);
                 }
             });
         } catch (TelegramApiException tapie) {
@@ -210,27 +260,32 @@ public class TaskContext {
     }
     
     private void prepareGroupMessage (String group, FailableBiConsumer <String, InlineKeyboardMarkup, TelegramApiException> doOnReady) throws TelegramApiException {
-        final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
-        final var chatMember = TelegramBot.getInstance ().getChatMember (chatId, authorId);
+        final var userContextService = UserContextService.getInstance ();
         
-        final var sj = prepareShortTaskMessage (chatMember.getUser (), task, type);
+        final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
+        final var author = userContextService.findContextForExistingUser (authorId);
+        
+        final var sj = prepareShortTaskMessage (author, task, type);
         sj.add ("#tasks #tid" + id);
         
         sj.add ("");
         sj.add ("🕵️‍♂️ <b>Текущий статус задачи:</b>");
         appendGroupStatus (sj, group, event);
+        appendStateInformation (sj);
         
-        doOnReady.accept (sj.toString (), prepareMarkup ());
+        doOnReady.accept (sj.toString (), prepareMarkup (false));
     }
     
     public void updateMessage () {
         log.info ("Updating task message...");
         
         try {
-            final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
-            final var chatMember = TelegramBot.getInstance ().getChatMember (chatId, authorId);
+            final var userContextService = UserContextService.getInstance ();
             
-            final var sj = prepareShortTaskMessage (chatMember.getUser (), task, type);
+            final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
+            final var author = userContextService.findContextForExistingUser (authorId);
+            
+            final var sj = prepareShortTaskMessage (author, task, type);
             sj.add ("#tasks #tid" + id);
             
             sj.add ("");
@@ -239,7 +294,9 @@ public class TaskContext {
                 appendGroupStatus (sj, group, event);
             }
             
-            final var markup = prepareMarkup ();
+            appendStateInformation (sj);
+            
+            final var markup = prepareMarkup (true);
             
             TelegramBot.getInstance ().sendMessageEdit (chatId, messageId, cfg -> {
                 cfg.text (sj.toString ());
@@ -283,49 +340,81 @@ public class TaskContext {
         return sj;
     }
     
-    private InlineKeyboardMarkup prepareMarkup () {
+    private void appendStateInformation (StringJoiner sj) {
+        if (isDisabled ()) {
+            sj.add ("");
+            
+            if (stateEditorId != null && stateChangeDate != null) {
+                final var userContextService = UserContextService.getInstance ();
+                final var editor = userContextService.findContextForExistingUser (stateEditorId);
+                
+                sj.add ("⏯️ Задача приостановлена @" + editor.getUsername () + " в " + DateUtils.dateFormatShort.format (stateChangeDate));
+            } else {
+                sj.add ("⏯️ Задача приостановлена");
+            }
+        }
+    }
+    
+    private InlineKeyboardMarkup prepareMarkup (boolean forSourceMessage) {
         final var markup = new InlineKeyboardMarkup ();
         markup.setKeyboard (new ArrayList <> ());
-        if (isQuestion ()) {
+        
+        if (isEnabled ()) {
+            if (isQuestion ()) {
+                
+            } else if (isTask ()) {
+                final var processRow = new ArrayList <InlineKeyboardButton> ();
+                markup.getKeyboard ().add (processRow);
+                
+                final var inProcessText = "💃 В процессе";
+                processRow.add (InlineKeyboardButton.builder ()
+                    .text (inProcessText)
+                    .callbackData ("/answertask id " + id + "; answer " + inProcessText)
+                    .build ());
+                
+                final var doneText = "✅ Выполнили";
+                processRow.add (InlineKeyboardButton.builder ()
+                    .text (doneText)
+                    .callbackData ("/answertask id " + id + "; answer " + doneText)
+                    .build ());
+            }
             
-        } else if (isTask ()) {
-            final var processRow = new ArrayList <InlineKeyboardButton> ();
-            markup.getKeyboard ().add (processRow);
+            final var commentRow = new ArrayList <InlineKeyboardButton> ();
+            markup.getKeyboard ().add (commentRow);
             
-            final var inProcessText = "💃 В процессе";
-            processRow.add (InlineKeyboardButton.builder ()
-                .text (inProcessText)
-                .callbackData ("/answertask id " + id + "; answer " + inProcessText)
-                .build ());
-            
-            final var doneText = "✅ Выполнили";
-            processRow.add (InlineKeyboardButton.builder ()
-                .text (doneText)
-                .callbackData ("/answertask id " + id + "; answer " + doneText)
+            commentRow.add (InlineKeyboardButton.builder ()
+                .text ("💭 Ответить в свободной форме")
+                .switchInlineQueryCurrentChat ("id " + id + "; answer\n")
                 .build ());
         }
         
-        final var commentRow = new ArrayList <InlineKeyboardButton> ();
-        markup.getKeyboard ().add (commentRow);
-        
-        commentRow.add (InlineKeyboardButton.builder ()
-            .text ("💭 Ответить в свободной форме")
-            .switchInlineQueryCurrentChat ("id " + id + "; answer\n")
-            .build ());
+        if (forSourceMessage) {
+            final var editorRow = new ArrayList <InlineKeyboardButton> ();
+            markup.getKeyboard ().add (editorRow);
+            
+            editorRow.add (InlineKeyboardButton.builder ()
+                .text ("📝 Изменить")
+                .switchInlineQueryCurrentChat ("id " + id + "; task " + task + "; groups " + String.join (", ", groups))
+                .build ());
+            editorRow.add (InlineKeyboardButton.builder ()
+                .text (isEnabled () ? "⏯️ Приостановить" : "▶️ Запустить")
+                .callbackData ("/activationtask id " + id)
+                .build ());
+        }
         
         return markup;
     }
     
-    public static StringJoiner prepareShortTaskMessage (User user, String task, String type) {
+    public static StringJoiner prepareShortTaskMessage (UserContext user, String task, String type) {
         final var sj = new StringJoiner ("\n");
         
         final var isQuestion = TYPE_QUESTION.equals (type);
         final var isTask = TYPE_TASK.equals (type);
         
         if (isQuestion) {
-            sj.add ("‼️ <b>Новый вопрос от</b> @" + user.getUserName () + " ‼️");
+            sj.add ("‼️ <b>Новый вопрос от</b> @" + user.getUsername () + " ‼️");
         } else if (isTask) {
-            sj.add ("‼️ <b>Новая задача от</b> @" + user.getUserName () + " ‼️");
+            sj.add ("‼️ <b>Новая задача от</b> @" + user.getUsername () + " ‼️");
         } else {
             throw new IllegalStateException ("Unknown state");
         }

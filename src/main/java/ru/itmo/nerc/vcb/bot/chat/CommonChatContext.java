@@ -4,7 +4,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.Deque;
-import java.util.List;
 import java.util.Queue;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -25,17 +24,18 @@ import ru.itmo.nerc.vcb.bot.chat.pending.ChatPending;
 import ru.itmo.nerc.vcb.bot.chat.pending.ChooseSubscriptionGroupPending;
 import ru.itmo.nerc.vcb.bot.chat.pending.CodeAuthenticationPending;
 import ru.itmo.nerc.vcb.bot.chat.pending.DelayedCommandProcessingPending;
+import ru.itmo.nerc.vcb.bot.chat.task.TaskCommandValidator;
 import ru.itmo.nerc.vcb.bot.chat.task.TaskContext;
 import ru.itmo.nerc.vcb.bot.chat.task.TaskContextService;
+import ru.itmo.nerc.vcb.bot.chat.task.TaskState;
 import ru.itmo.nerc.vcb.bot.chat.task.TaskStatusChangeService;
-import ru.itmo.nerc.vcb.bot.chat.task.TaskUtils;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 import ru.itmo.nerc.vcb.bot.user.UserContextService;
 import ru.itmo.nerc.vcb.bot.user.UserRole;
 import ru.itmo.nerc.vcb.cfg.BotEventConfiguration.EventActivity;
 import ru.itmo.nerc.vcb.cfg.BotEventConfiguration.EventGroup;
 import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
-import ru.itmo.nerc.vcb.utils.DateUtils;
+import ru.itmo.nerc.vcb.db.DateUtils;
 
 @Slf4j
 public class CommonChatContext implements ChatContext {
@@ -155,11 +155,11 @@ public class CommonChatContext implements ChatContext {
     public void processCommand (UserContext user, Message message, Pair <String, String> command) throws CommandProcessingException, TelegramApiException {
         switch (command.a) {
             case ANSWER_TASK_COMMAND -> checkAndCall (user, UserRole.PARTICIPANT, () -> answerToTask (user, message, command.b));
+            case "/activationtask" -> checkAndCall (user, UserRole.MODERATOR, () -> changeTaskActivation (user, message, command.b));
             case "/createtask" -> checkAndCall (user, UserRole.MODERATOR, () -> createTask (user, message, command.b));
             case "/dropmessage" -> checkAndCall (user, UserRole.UNKNOWN, () -> dropMessage (message));
+            case "/edittask" -> checkAndCall (user, UserRole.MODERATOR, () -> editTask (user, message, command.b));
             case "/eventinfo" -> checkAndCall (user, UserRole.PARTICIPANT, () -> showEventInfo (message));
-            case "/subscribe" -> checkAndCall (user, UserRole.PARTICIPANT, () -> subscribeToGroup (user, message, command.b));
-            case "/unsubscribe" -> checkAndCall (user, UserRole.PARTICIPANT, () -> subscribeToGroup (user, message, null));
             
             default -> TelegramBot.getInstance ().setReactionOnMessage (message, "🤷‍♂️");
         };
@@ -227,67 +227,100 @@ public class CommonChatContext implements ChatContext {
     
     private void answerToTask (UserContext user, Message message, String query) throws CommandProcessingException {
         final var parsedQuery = InlineQueryProcessor.parseQuery (query);
+        TaskCommandValidator.checkError (parsedQuery);
+        TaskCommandValidator.checkAnswer (parsedQuery);
+        TaskCommandValidator.checkId (parsedQuery);
+        TaskCommandValidator.checkUserGroup (user);
+        
         final var answer = parsedQuery.getAnswer ();
         final var id = parsedQuery.getId ();
-        
-        if (parsedQuery.getError () != null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b> " + parsedQuery.getError ());
-        } else if (answer == null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[answer]</code>");
-        } else if (id == null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[id]</code>");
-        } else if (user.getGroup () == null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nВы не можете обновить статус задачи, потому что не подписаны ни на какую группу");
-        }
         
         final var task = taskContextService.findContext (id);
         if (task == null) {
             throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nЗадача не найдена");
+        } else if (task.isDisabled ()) {
+            throw new CommandProcessingException ("<b>Ответ не был записан:</b>\nЗадача приостановлена и изменить ответ в данный момент нельзя");
         }
         
         taskStatusChangeService.addChange (task, answer, message, user);
         
         task.updateMessage ();
-        task.broadcastUpdateForGroup (user.getGroup ());
+        task.broadcastUpdateForGroup (user.getGroup (), false);
     }
     
     private void createTask (UserContext user, Message message, String query) throws CommandProcessingException {
         final var parsedQuery = InlineQueryProcessor.parseQuery (query);
-        final var groups = parsedQuery.getGroups ();
+        TaskCommandValidator.checkError (parsedQuery);
+        TaskCommandValidator.checkTask (parsedQuery);
+        TaskCommandValidator.checkType (parsedQuery);
+        
         final var task = parsedQuery.getTask ();
         final var type = parsedQuery.getType ();
         
-        if (parsedQuery.getError () != null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b> " + parsedQuery.getError ());
-        } else if (task == null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[task]</code>");
-        } else if (type == null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[type]</code>");
-        } else if (!TaskContext.TYPE_TASK.equals (type) && !TaskContext.TYPE_QUESTION.equals (type)) {
-            throw new CommandProcessingException (
-                "<b>Ошибка в запросе:</b>\nТип задачи может быть только <code>" + TaskContext.TYPE_TASK
-                + "</code> или <code>" + TaskContext.TYPE_QUESTION + "</code>"
-            );
-        }
-        
         final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
-        final var groupsQuery = groups == null ? List.<String> of () : groups;
-        final var decidedGroups = TaskUtils.decideGroups (event, groupsQuery);
-        parsedQuery.setGroups (decidedGroups.a);
+        parsedQuery.setEvent (event);
         
         try {
-            final var chatMember = TelegramBot.getInstance ().getChatMember (chatId, user.getUserId ());
-            
             final var taskMessage = TelegramBot.getInstance ().sendMessage (chatId, cfg -> {
-                cfg.text (TaskContext.prepareShortTaskMessage (chatMember.getUser (), task, type).toString ());
+                cfg.text (TaskContext.prepareShortTaskMessage (user, task, type).toString ());
             });
             
-            final var taskEntity = taskContextService.createContext (chatMember.getUser (), taskMessage, parsedQuery);
-            for (final var group : parsedQuery.getGroups ()) {
-                taskEntity.broadcastForGroup (group);
+            final var taskContext = taskContextService.createContext (user, taskMessage, parsedQuery);
+            for (final var group : parsedQuery.getGroupsSplit ().a) {
+                taskContext.broadcastForGroup (group);
             }
         } catch (TelegramApiException tapie) {
             log.error ("Failed to send message", tapie);
+        }
+    }
+    
+    private void changeTaskActivation (UserContext user, Message message, String query) throws CommandProcessingException {
+        final var parsedQuery = InlineQueryProcessor.parseQuery (query);
+        TaskCommandValidator.checkError (parsedQuery);
+        TaskCommandValidator.checkId (parsedQuery);
+        
+        final var id = parsedQuery.getId ();
+        
+        final var taskContext = taskContextService.findContext (id);
+        if (taskContext == null) {
+            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nЗадача не найдена");
+        }
+        
+        final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
+        parsedQuery.setEvent (event);
+        
+        final var includeGroups = parsedQuery.getGroupsSplit ().a;
+        taskContext.setState (user, taskContext.isEnabled () ? TaskState.DISABLED : TaskState.ENABLED);
+        
+        for (final var group : includeGroups) {
+            taskContext.broadcastUpdateForGroup (group, false);
+        }
+    }
+    
+    private void editTask (UserContext user, Message message, String query) throws CommandProcessingException {
+        final var parsedQuery = InlineQueryProcessor.parseQuery (query);
+        final var task = parsedQuery.getTask ();
+        final var type = parsedQuery.getType ();
+        final var id = parsedQuery.getId ();
+        
+        TaskCommandValidator.checkError (parsedQuery);
+        TaskCommandValidator.checkId (parsedQuery);
+        TaskCommandValidator.checkTask (parsedQuery);
+        TaskCommandValidator.checkType (parsedQuery);
+        
+        final var taskContext = taskContextService.findContext (id);
+        if (taskContext == null) {
+            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nЗадача не найдена");
+        }
+        
+        final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
+        parsedQuery.setEvent (event);
+        
+        final var includeGroups = parsedQuery.getGroupsSplit ().a;
+        taskContext.setTask (task).setType (type).setGroups (includeGroups);
+        
+        for (final var group : includeGroups) {
+            taskContext.broadcastUpdateForGroup (group, true);
         }
     }
     

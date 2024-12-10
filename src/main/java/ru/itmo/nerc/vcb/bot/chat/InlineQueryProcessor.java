@@ -6,14 +6,15 @@ import java.util.Queue;
 import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.stream.Collectors;
 
+import org.antlr.v4.runtime.misc.Pair;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.inlinequery.inputmessagecontent.InputTextMessageContent;
 import org.telegram.telegrambots.meta.api.objects.inlinequery.result.InlineQueryResult;
 import org.telegram.telegrambots.meta.api.objects.inlinequery.result.InlineQueryResultArticle;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,6 +36,7 @@ import ru.itmo.nerc.vcb.bot.chat.task.TaskStatusChangeService;
 import ru.itmo.nerc.vcb.bot.chat.task.TaskUtils;
 import ru.itmo.nerc.vcb.bot.user.UserContextService;
 import ru.itmo.nerc.vcb.bot.user.UserRole;
+import ru.itmo.nerc.vcb.cfg.BotEventConfiguration;
 import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
 import ru.itmo.nerc.vcb.utils.thread.RunnableActivity;
 import ru.itmo.nerc.vcb.utils.thread.SupervisedRunnable;
@@ -101,7 +103,7 @@ public class InlineQueryProcessor implements TelegramChildBot, SupervisedRunnabl
     public boolean onUpdateReceived (Update update) throws TelegramApiException {
         final var user = userContextService.findContextForUser (update.getInlineQuery ().getFrom ());
         final var query = update.getInlineQuery ().getQuery ().trim ();
-        log.info (" Query: {}", query);
+        log.info ("Query: {}", query);
         
         final var parsedQuery = parseQuery (query);
         log.info ("Parsed query: {}", parsedQuery);
@@ -112,149 +114,51 @@ public class InlineQueryProcessor implements TelegramChildBot, SupervisedRunnabl
         
         final var options = new ArrayList <InlineQueryResult> ();
         if (parsedQuery.getError () != null) {
-            options.add (InlineQueryResultArticle.builder ()
-                .hideUrl (true)
-                .id (UUID.randomUUID ().toString ())
-                .title ("Ошибка в запросе")
-                .description (parsedQuery.getError ())
-                .thumbnailUrl (EXCLAMATION_ICON)
-                .inputMessageContent (InputTextMessageContent.builder ()
-                    .messageText ("/dropmessage")
-                    .build ())
-                .build ());
+            options.add (prepareErrorResult ("Ошибка в запросе", parsedQuery.getError ()));
         } else if (parsedQuery.getTask () != null) {
             if (!user.hasPermissions (UserRole.MODERATOR)) {
-                options.add (InlineQueryResultArticle.builder ()
-                    .hideUrl (true)
-                    .id (UUID.randomUUID ().toString ())
-                    .title ("Недостаточно прав")
-                    .description ("У Вас недостаточно прав для создания задачи")
-                    .thumbnailUrl (EXCLAMATION_ICON)
-                    .inputMessageContent (InputTextMessageContent.builder ()
-                        .messageText ("/dropmessage")
-                        .build ())
-                    .build ());
+                options.add (prepareErrorResult ("Недостаточно прав", "У Вас недостаточно прав для создания задачи"));
             } else {
-                final var suggestionMessageBuilder = new StringJoiner ("\n");
-                suggestionMessageBuilder.add (parsedQuery.getTask ().length () < 32 ? parsedQuery.getTask () : parsedQuery.getTask ().substring (0, 32));
-                suggestionMessageBuilder.add ("Назначенные группы: " + String.join (", ", decidedGroups.a));
-                if (!decidedGroups.b.isEmpty ()) {
-                    suggestionMessageBuilder.add ("Доступные группы: " + String.join (", ", decidedGroups.b));
-                }
+                final var task = parsedQuery.getTask ();
+                final var suggestionMessage = prepareTaskPreviewMessage (task, decidedGroups.a, decidedGroups.b);
                 
-                final var suggestionMessage = suggestionMessageBuilder.toString ();
-                
-                for (final var suggestion : QUERY_SUGGESTIONS) {
-                    final var command = makeCommandCreateTask (parsedQuery.getTask (), decidedGroups.a, suggestion.getType ());
-                    
-                    options.add (InlineQueryResultArticle.builder ()
-                        .id (UUID.nameUUIDFromBytes (command.getBytes ()).toString ())
-                        .description (suggestionMessage)
-                        .hideUrl (true)
-                        .thumbnailUrl (suggestion.getIcon ())
-                        .title (suggestion.getDisplayType ())
-                        .inputMessageContent (InputTextMessageContent.builder ()
-                            .messageText (command)
-                            .build ())
-                        .build ());
+                for (final var suggestion : TASK_QUERY_SUGGESTIONS) {
+                    if (parsedQuery.getId () == null) {
+                        options.add (prepareTaskResult (suggestion, suggestionMessage, task, decidedGroups.a));
+                    } else {
+                        final var taskId = parsedQuery.getId ();
+                        options.add (prepareTaskEditResult (suggestion, suggestionMessage, taskId, task, decidedGroups.a));
+                    }
                 }
             }
         } else if (parsedQuery.getAnswer () != null) {
             if (user.getGroup () == null) {
-                options.add (InlineQueryResultArticle.builder ()
-                    .hideUrl (true)
-                    .id (UUID.randomUUID ().toString ())
-                    .title ("Невозможно обновить статус задачи")
-                    .description ("Вы не подписаны ни на какую группу, поэтому вы не можете обновить статус задачи")
-                    .thumbnailUrl (EXCLAMATION_ICON)
-                    .inputMessageContent (InputTextMessageContent.builder ()
-                        .messageText ("/dropmessage")
-                        .build ())
-                    .build ());
+                options.add (prepareErrorResult ("Невозможно обновить статус задачи", "Вы не состоите ни в какой группе"));
             } else {
-                if (parsedQuery.getId () != null) {
+                if (parsedQuery.getId () == null) {
+                    options.add (prepareErrorResult ("Невозможно обновить статус задачи", "Не указан идентификатор (id)"));
+                } else if (parsedQuery.getId () != null) {
                     final var task = taskContextService.findContext (parsedQuery.getId ());
-                    if (task != null) {
+                    if (task != null && task.isEnabled ()) {
                         final var status = taskStatusChangeService.addNoticedChange (task, "👀 Заметили задание", user);
                         if (status != null) {
                             task.updateMessage ();
                             task.broadcastForGroup (user.getGroup ());
                         }
                     }
-                }
-                
-                if (parsedQuery.getId () == null) {
-                    options.add (InlineQueryResultArticle.builder ()
-                        .hideUrl (true)
-                        .id (UUID.randomUUID ().toString ())
-                        .title ("Невозможно обновить статус задачи")
-                        .description ("Вы не подписаны ни на какую группу, поэтому вы не можете обновить статус задачи")
-                        .thumbnailUrl (EXCLAMATION_ICON)
-                        .inputMessageContent (InputTextMessageContent.builder ()
-                            .messageText ("/dropmessage")
-                            .build ())
-                        .build ());
-                } else if (parsedQuery.getAnswer ().length () == 0) {
-                    final var commandSee = "/answertask id " + parsedQuery.getId () + "; answer Уже смотрим\n/dropmessage";
-                    options.add (InlineQueryResultArticle.builder ()
-                        .hideUrl (true)
-                        .id (UUID.nameUUIDFromBytes (commandSee.getBytes ()).toString ())
-                        .title ("Ответ на задачу #tid" + parsedQuery.getId ())
-                        .description ("Уже смотрим")
-                        .thumbnailUrl (EYES_ICON)
-                        .inputMessageContent (InputTextMessageContent.builder ()
-                            .messageText (commandSee)
-                            .build ())
-                        .build ());
                     
-                    final var commandNeedHelp = "/answertask id " + parsedQuery.getId () + "; answer Нужна помощь ТК\n/dropmessage";
-                    options.add (InlineQueryResultArticle.builder ()
-                        .hideUrl (true)
-                        .id (UUID.nameUUIDFromBytes (commandNeedHelp.getBytes ()).toString ())
-                        .title ("Ответ на задачу #tid" + parsedQuery.getId ())
-                        .description ("Нужна помощь ТК")
-                        .thumbnailUrl (NEED_HELP_ICON)
-                        .inputMessageContent (InputTextMessageContent.builder ()
-                            .messageText (commandNeedHelp)
-                            .build ())
-                        .build ());
-                    
-                    final var commandFixed = "/answertask id " + parsedQuery.getId () + "; answer Починили/исправили\n/dropmessage";
-                    options.add (InlineQueryResultArticle.builder ()
-                        .hideUrl (true)
-                        .id (UUID.nameUUIDFromBytes (commandFixed.getBytes ()).toString ())
-                        .title ("Ответ на задачу #tid" + parsedQuery.getId ())
-                        .description ("Починили/исправили")
-                        .thumbnailUrl (FIXED_ICON)
-                        .inputMessageContent (InputTextMessageContent.builder ()
-                            .messageText (commandFixed)
-                            .build ())
-                        .build ());
-                    
-                    final var commandOk = "/answertask id " + parsedQuery.getId () + "; answer Всё в порядке\n/dropmessage";
-                    options.add (InlineQueryResultArticle.builder ()
-                        .hideUrl (true)
-                        .id (UUID.nameUUIDFromBytes (commandOk.getBytes ()).toString ())
-                        .title ("Ответ на задачу #tid" + parsedQuery.getId ())
-                        .description ("Всё в порядке")
-                        .thumbnailUrl (OK_ICON)
-                        .inputMessageContent (InputTextMessageContent.builder ()
-                            .messageText (commandOk)
-                            .build ())
-                        .build ());
-                } else {
-                    final var command = "/answertask id " + parsedQuery.getId () + "; answer " + parsedQuery.getAnswer () + "\n/dropmessage";
-                    
-                    options.add (InlineQueryResultArticle.builder ()
-                        .hideUrl (true)
-                        .id (UUID.nameUUIDFromBytes (command.getBytes ()).toString ())
-                        .title ("Ответ на задачу #tid" + parsedQuery.getId ())
-                        .description (parsedQuery.getAnswer ())
-                        .thumbnailUrl (MESSAGE_ICON)
-                        .inputMessageContent (InputTextMessageContent.builder ()
-                                .messageText (command)
-                                .build ())
-                        .build ());
+                    if (task == null) {
+                        options.add (prepareErrorResult ("Невозможно обновить статус задачи", "Указан неверный идентификатор (id)"));
+                    } else if (task.isDisabled ()) {
+                        options.add (prepareErrorResult ("Невозможно обновить статус задачи", "Задача приостановлена"));
+                    } else if (parsedQuery.getAnswer ().length () == 0) {
+                        options.add (prepareAnswerResult (parsedQuery.getId (), "Уже смотрим", EYES_ICON));
+                        options.add (prepareAnswerResult (parsedQuery.getId (), "Нужна помощь ТК", NEED_HELP_ICON));
+                        options.add (prepareAnswerResult (parsedQuery.getId (), "Починили/исправили", FIXED_ICON));
+                        options.add (prepareAnswerResult (parsedQuery.getId (), "Всё в порядке", OK_ICON));
+                    } else {
+                        options.add (prepareAnswerResult (parsedQuery.getId (), parsedQuery.getAnswer (), MESSAGE_ICON));
+                    }
                 }
             }
         }
@@ -280,6 +184,17 @@ public class InlineQueryProcessor implements TelegramChildBot, SupervisedRunnabl
         
         private String error;
         
+        @JsonIgnore
+        private BotEventConfiguration event;
+        
+        public Pair <List <String>, List <String>> getGroupsSplit () {
+            return TaskUtils.decideGroups (event, groups == null ? List.of () : groups);
+        }
+        
+        public List <String> getIncludeGroups () {
+            return getGroupsSplit ().a;
+        }
+        
     }
     
     public static ParsedQuery parseQuery (String query) {
@@ -301,11 +216,81 @@ public class InlineQueryProcessor implements TelegramChildBot, SupervisedRunnabl
         }
     }
     
+    private InlineQueryResult prepareErrorResult (String title, String error) {
+        return InlineQueryResultArticle.builder ()
+             . id (UUID.randomUUID ().toString ())
+             . title (title)
+             . description (error)
+             . thumbnailUrl (EXCLAMATION_ICON)
+             . inputMessageContent (InputTextMessageContent.builder ()
+                 .messageText ("/dropmessage")
+                 .build ())
+             . build ();
+    }
+    
+    private InlineQueryResult prepareTaskResult (TaskQuerySuggestion suggestion, String suggestionMessage, String task, List <String> include) {
+        final var command = "/createtask task " + task + "; groups " + String.join (", ", include) + "; type " + suggestion.getType () + "\n/dropmessage";
+        
+        return InlineQueryResultArticle.builder ()
+             . id (UUID.nameUUIDFromBytes (command.getBytes ()).toString ())
+             . description (suggestionMessage)
+             . thumbnailUrl (suggestion.getIcon ())
+             . title (suggestion.getDisplayType ())
+             . inputMessageContent (InputTextMessageContent.builder ()
+                 .messageText (command)
+                 .build ())
+             . build ();
+    }
+    
+    private InlineQueryResult prepareTaskEditResult (TaskQuerySuggestion suggestion, String suggestionMessage, long taskId, String task, List <String> include) {
+        final var command = "/edittask id " + taskId + "; task " + task + "; groups " + String.join (", ", include) + "; type " + suggestion.getType () + "\n/dropmessage";
+        
+        return InlineQueryResultArticle.builder ()
+             . id (UUID.nameUUIDFromBytes (command.getBytes ()).toString ())
+             . description (suggestionMessage)
+             . thumbnailUrl (suggestion.getIcon ())
+             . title (suggestion.getDisplayEditType ())
+             . inputMessageContent (InputTextMessageContent.builder ()
+                 .messageText (command)
+                 .build ())
+             . build ();
+    }
+    
+    private InlineQueryResult prepareAnswerResult (long taskId, String answer, String icon) {
+        final var command = "/answertask id " + taskId + "; answer " + answer + "\n/dropmessage";
+        return InlineQueryResultArticle.builder ()
+             . hideUrl (true)
+             . id (UUID.nameUUIDFromBytes (command.getBytes ()).toString ())
+             . title ("Ответ на задачу #tid" + taskId)
+             . description (answer)
+             . thumbnailUrl (icon)
+             . inputMessageContent (InputTextMessageContent.builder ()
+                 .messageText (command)
+                 .build ())
+             . build ();
+    }
+    
+    private String prepareTaskPreviewMessage (String task, List <String> include, List <String> exclude) {
+        final var suggestionMessageBuilder = new StringJoiner ("\n");
+        suggestionMessageBuilder.add (task.length () < 28 ? task : task.substring (0, 28) + "...");
+        
+        String groupsString = "Группы: " + String.join (", ", include);
+        if (!exclude.isEmpty ()) {
+            groupsString += " / " + String.join (", ", exclude);
+        }
+        
+        suggestionMessageBuilder.add (groupsString);
+        
+        return suggestionMessageBuilder.toString ();
+    }
+    
     @Getter
     @RequiredArgsConstructor
-    private class QuerySuggestion {
+    private class TaskQuerySuggestion {
         
         private final String displayType;
+        
+        private final String displayEditType;
         
         private final String type;
         
@@ -313,19 +298,15 @@ public class InlineQueryProcessor implements TelegramChildBot, SupervisedRunnabl
         
     }
     
-    private final List <QuerySuggestion> QUERY_SUGGESTIONS = List.of (
-        new QuerySuggestion ("Задача с вопросом", TaskContext.TYPE_QUESTION, "https://cdn.iconscout.com/icon/premium/png-256-thumb/question-mark-2716891-2263063.png?f=webp&w=64"),
-        new QuerySuggestion ("Задача на выполнение", TaskContext.TYPE_TASK, "https://cdn.iconscout.com/icon/premium/png-256-thumb/task-71158.png?f=webp&w=64")
+    private final List <TaskQuerySuggestion> TASK_QUERY_SUGGESTIONS = List.of (
+        new TaskQuerySuggestion (
+            "Задача с вопросом", "Сделать задачей с вопросом",
+            TaskContext.TYPE_QUESTION, "https://cdn.iconscout.com/icon/premium/png-256-thumb/question-mark-2716891-2263063.png?f=webp&w=64"
+        ),
+        new TaskQuerySuggestion (
+            "Задача на выполнение", "Сделать задачей на выполнение",
+            TaskContext.TYPE_TASK, "https://cdn.iconscout.com/icon/premium/png-256-thumb/task-71158.png?f=webp&w=64"
+        )
     );
-    
-    @SuppressWarnings ("unused")
-    private String makeCommandCreateTaskJSON (String task, List <String> groups, String type) {
-        final var convertedGroups = groups.stream ().map (g -> "\"" + g + "\"").collect (Collectors.joining (",", "[", "]"));
-        return "/createtask {\"task\":\"" + task + "\", \"groups\":" + convertedGroups + ", \"type\":\"" + type + "\"}";
-    }
-    
-    private String makeCommandCreateTask (String task, List <String> groups, String type) {
-        return "/createtask task " + task + "; groups " + String.join (", ", groups) + "; type " + type + "\n/dropmessage";
-    }
     
 }

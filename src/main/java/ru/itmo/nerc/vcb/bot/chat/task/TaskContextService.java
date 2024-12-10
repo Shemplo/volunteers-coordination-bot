@@ -4,12 +4,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.telegram.telegrambots.meta.api.objects.Message;
-import org.telegram.telegrambots.meta.api.objects.User;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.chat.InlineQueryProcessor.ParsedQuery;
+import ru.itmo.nerc.vcb.bot.user.UserContext;
+import ru.itmo.nerc.vcb.db.DatabaseService;
 
 @Slf4j
 @NoArgsConstructor (access = AccessLevel.PRIVATE)
@@ -31,7 +32,7 @@ public class TaskContextService {
     
     private final Map <Long, TaskContext> id2context = new ConcurrentHashMap <> ();
     
-    public TaskContext createContext (User author, Message message, ParsedQuery query) {
+    public TaskContext createContext (UserContext author, Message message, ParsedQuery query) {
         final var task = new TaskContext (author, message, query);
         id2context.put (task.getId (), task);
         return task;
@@ -39,9 +40,20 @@ public class TaskContextService {
     
     public TaskContext findContext (long taskId) {
         return id2context.computeIfAbsent (taskId, __ -> {
-            final var context = new TaskContext (taskId);
-            
-            return context;
+            return DatabaseService.getInstance ().mapWrappedOrNull (connection -> {
+                try (final var selectStatement = connection.prepareStatement ("SELECT * FROM task WHERE id = ?")) {
+                    int i = 1;
+                    selectStatement.setLong (i++, taskId);
+                    
+                    try (final var queryResult = selectStatement.executeQuery ()) {
+                        if (queryResult.next ()) {
+                            return new TaskContext (queryResult);
+                        } else {
+                            return null;
+                        }
+                    }
+                }
+            });
         });
     }
     

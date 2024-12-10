@@ -63,7 +63,9 @@ public class DatabaseService {
                     state VARCHAR(16) NOT NULL,
                     task TEXT NULL,
                     type VARCHAR(16) NULL,
-                    groups VARCHAR(255) NULL
+                    groups VARCHAR(255) NULL,
+                    state_editor_id BIGINT NULL,
+                    state_change_date DATETIME NULL
                 )
             """).execute ();
             connection.prepareStatement ("""
