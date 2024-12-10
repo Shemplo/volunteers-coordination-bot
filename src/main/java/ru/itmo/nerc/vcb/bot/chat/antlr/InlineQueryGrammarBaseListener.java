@@ -163,6 +163,54 @@ public class InlineQueryGrammarBaseListener implements InlineQueryGrammarListene
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterKeyParameter(InlineQueryGrammarParser.KeyParameterContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitKeyParameter(InlineQueryGrammarParser.KeyParameterContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterKeyOperator(InlineQueryGrammarParser.KeyOperatorContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitKeyOperator(InlineQueryGrammarParser.KeyOperatorContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterValueParameter(InlineQueryGrammarParser.ValueParameterContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitValueParameter(InlineQueryGrammarParser.ValueParameterContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterValueOperator(InlineQueryGrammarParser.ValueOperatorContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitValueOperator(InlineQueryGrammarParser.ValueOperatorContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterIgnoreParameter(InlineQueryGrammarParser.IgnoreParameterContext ctx) { }
 	/**
 	 * {@inheritDoc}

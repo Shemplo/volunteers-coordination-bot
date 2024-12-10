@@ -1,8 +1,8 @@
 package ru.itmo.nerc.vcb.bot.chat.task;
 
 import lombok.experimental.UtilityClass;
+import ru.itmo.nerc.vcb.bot.InlineQueryProcessor.ParsedQuery;
 import ru.itmo.nerc.vcb.bot.chat.CommandProcessingException;
-import ru.itmo.nerc.vcb.bot.chat.InlineQueryProcessor.ParsedQuery;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 
 @UtilityClass
@@ -14,15 +14,21 @@ public class TaskCommandValidator {
         }
     }
     
+    public void checkError (ParsedQuery parsedQuery) throws CommandProcessingException {
+        if (parsedQuery.getError () != null) {
+            throw new CommandProcessingException ("<b>Ошибка в запросе:</b> " + parsedQuery.getError ());
+        }
+    }
+    
     public void checkId (ParsedQuery parsedQuery) throws CommandProcessingException {
         if (parsedQuery.getId () == null) {
             throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[id]</code>");
         }
     }
     
-    public void checkError (ParsedQuery parsedQuery) throws CommandProcessingException {
-        if (parsedQuery.getError () != null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b> " + parsedQuery.getError ());
+    public void checkKey (ParsedQuery parsedQuery) throws CommandProcessingException {
+        if (parsedQuery.getKey () == null) {
+            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[key]</code>");
         }
     }
     
@@ -48,6 +54,12 @@ public class TaskCommandValidator {
     public void checkUserGroup (UserContext user) throws CommandProcessingException {
         if (user.getGroup () == null) {
             throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nВы не можете обновить статус задачи, потому что не состоите ни в одной группе");
+        }
+    }
+    
+    public void checkValue (ParsedQuery parsedQuery) throws CommandProcessingException {
+        if (parsedQuery.getValue () == null) {
+            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[value]</code>");
         }
     }
     

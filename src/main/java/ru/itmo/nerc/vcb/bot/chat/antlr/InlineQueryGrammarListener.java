@@ -130,6 +130,46 @@ public interface InlineQueryGrammarListener extends ParseTreeListener {
 	 */
 	void exitAnswerOperator(InlineQueryGrammarParser.AnswerOperatorContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link InlineQueryGrammarParser#keyParameter}.
+	 * @param ctx the parse tree
+	 */
+	void enterKeyParameter(InlineQueryGrammarParser.KeyParameterContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link InlineQueryGrammarParser#keyParameter}.
+	 * @param ctx the parse tree
+	 */
+	void exitKeyParameter(InlineQueryGrammarParser.KeyParameterContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link InlineQueryGrammarParser#keyOperator}.
+	 * @param ctx the parse tree
+	 */
+	void enterKeyOperator(InlineQueryGrammarParser.KeyOperatorContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link InlineQueryGrammarParser#keyOperator}.
+	 * @param ctx the parse tree
+	 */
+	void exitKeyOperator(InlineQueryGrammarParser.KeyOperatorContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link InlineQueryGrammarParser#valueParameter}.
+	 * @param ctx the parse tree
+	 */
+	void enterValueParameter(InlineQueryGrammarParser.ValueParameterContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link InlineQueryGrammarParser#valueParameter}.
+	 * @param ctx the parse tree
+	 */
+	void exitValueParameter(InlineQueryGrammarParser.ValueParameterContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link InlineQueryGrammarParser#valueOperator}.
+	 * @param ctx the parse tree
+	 */
+	void enterValueOperator(InlineQueryGrammarParser.ValueOperatorContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link InlineQueryGrammarParser#valueOperator}.
+	 * @param ctx the parse tree
+	 */
+	void exitValueOperator(InlineQueryGrammarParser.ValueOperatorContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link InlineQueryGrammarParser#ignoreParameter}.
 	 * @param ctx the parse tree
 	 */

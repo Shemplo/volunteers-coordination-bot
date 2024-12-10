@@ -29,6 +29,12 @@ anyParameter returns [String json = "";] @init {}
     | answerParameter {
         $json = $answerParameter.json;
     }
+    | keyParameter {
+        $json = $keyParameter.json;
+    }
+    | valueParameter {
+        $json = $valueParameter.json;
+    }
     ;
     
 taskParameter returns [String json] @init {}
@@ -83,6 +89,7 @@ idParameter returns [String json] @init {}
     
 idOperator
     : 'id'
+    | 'ID'
     ;
     
 answerParameter returns [String json] @init {}
@@ -94,6 +101,32 @@ answerParameter returns [String json] @init {}
 answerOperator
     : 'answer'
     | 'ответ'
+    ;
+    
+keyParameter returns [String json] @init {}
+    : keyOperator sentenceWithComma? {
+        $json = "\"key\":\"" + ($sentenceWithComma.text != null ? $sentenceWithComma.text.trim () : "") + "\"";
+    }
+    ;
+    
+keyOperator
+    : 'key'
+    | 'Key'
+    | 'ключ'
+    | 'Ключ'
+    ;
+    
+valueParameter returns [String json] @init {}
+    : valueOperator sentenceWithComma? {
+        $json = "\"value\":\"" + ($sentenceWithComma.text != null ? $sentenceWithComma.text.trim () : "") + "\"";
+    }
+    ;
+    
+valueOperator
+    : 'value'
+    | 'Value'
+    | 'значение'
+    | 'Значение'
     ;
     
 ignoreParameter
@@ -110,7 +143,7 @@ sentenceWithComma
     ;
 
 sentence
-    : (WS+ | ANY+ | taskOperator | groupsOperator | typeOperator | idOperator | answerOperator)+
+    : (WS+ | ANY+ | taskOperator | groupsOperator | typeOperator | idOperator | answerOperator | keyOperator | valueOperator)+
     ;
 
 WS: ' ' | '\n' | '\t';

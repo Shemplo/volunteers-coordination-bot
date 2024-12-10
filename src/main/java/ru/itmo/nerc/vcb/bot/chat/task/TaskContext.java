@@ -19,8 +19,10 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import lombok.Getter;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
+import ru.itmo.nerc.vcb.bot.InlineQueryProcessor.ParsedQuery;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
-import ru.itmo.nerc.vcb.bot.chat.InlineQueryProcessor.ParsedQuery;
+import ru.itmo.nerc.vcb.bot.chat.ChatMetaInformation;
+import ru.itmo.nerc.vcb.bot.chat.ChatMetaInformationService;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 import ru.itmo.nerc.vcb.bot.user.UserContextService;
 import ru.itmo.nerc.vcb.cfg.BotEventConfiguration;
@@ -52,17 +54,27 @@ public class TaskContext {
     private volatile Long stateEditorId;
     private volatile Date stateChangeDate;
     
-    public TaskContext (UserContext author, Message message, ParsedQuery query) {
-        this.chatId = message.getChatId ();
-        this.messageId = message.getMessageId ();
-        this.authorId = author.getUserId ();
+    public TaskContext (UserContext author, Message message, ParsedQuery parsedQuery) {
+        chatId = message.getChatId ();
+        messageId = message.getMessageId ();
+        authorId = author.getUserId ();
         
-        this.groups = query.getIncludeGroups ();
-        this.task = query.getTask ();
-        this.type = query.getType ();
-        this.state = TaskState.CREATED;
+        task = parsedQuery.getTask ();
+        type = parsedQuery.getType ();
+        state = TaskState.CREATED;
         
-        this.id = insertAndGetId (chatId, messageId, authorId, state);
+        if (parsedQuery.getGroups () == null) {
+            final var chatMetaInformationService = ChatMetaInformationService.getInstance ();
+            final var defaultGroups = chatMetaInformationService.findOrCreateByChatAndKey (chatId, ChatMetaInformation.KEY_DEFAULT_GROUPS);
+            if (defaultGroups.getValue () != null) {
+                final var defaultGroupsList = Arrays.asList (defaultGroups.getValue ().split ("\\s*,\\s*"));
+                groups = TaskUtils.decideGroups (parsedQuery.getEvent (), defaultGroupsList).a;
+            }
+        } else {
+            groups = parsedQuery.getIncludeGroups ();
+        }
+        
+        id = insertAndGetId (chatId, messageId, authorId, state);
         
         // This will cause `persist` and `updateMessage` methods to be called
         setState (null, TaskState.ENABLED);

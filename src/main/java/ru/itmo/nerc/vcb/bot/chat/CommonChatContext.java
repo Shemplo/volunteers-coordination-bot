@@ -19,6 +19,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import ru.itmo.nerc.vcb.bot.InlineQueryProcessor;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
 import ru.itmo.nerc.vcb.bot.chat.pending.ChatPending;
 import ru.itmo.nerc.vcb.bot.chat.pending.ChooseSubscriptionGroupPending;
@@ -52,6 +53,7 @@ public class CommonChatContext implements ChatContext {
     }
     
     protected final ChatContextService chatContextService = ChatContextService.getInstance ();
+    protected final ChatMetaInformationService chatMetaInformationService = ChatMetaInformationService.getInstance ();
     protected final TaskContextService taskContextService = TaskContextService.getInstance ();
     protected final TaskStatusChangeService taskStatusChangeService = TaskStatusChangeService.getInstance ();
     protected final UserContextService userContextService = UserContextService.getInstance ();
@@ -160,6 +162,7 @@ public class CommonChatContext implements ChatContext {
             case "/dropmessage" -> checkAndCall (user, UserRole.UNKNOWN, () -> dropMessage (message));
             case "/edittask" -> checkAndCall (user, UserRole.MODERATOR, () -> editTask (user, message, command.b));
             case "/eventinfo" -> checkAndCall (user, UserRole.PARTICIPANT, () -> showEventInfo (message));
+            case "/writemeta" -> checkAndCall (user, UserRole.PARTICIPANT, () -> writeMetainformation (command.b));
             
             default -> TelegramBot.getInstance ().setReactionOnMessage (message, "🤷‍♂️");
         };
@@ -266,7 +269,7 @@ public class CommonChatContext implements ChatContext {
             });
             
             final var taskContext = taskContextService.createContext (user, taskMessage, parsedQuery);
-            for (final var group : parsedQuery.getGroupsSplit ().a) {
+            for (final var group : taskContext.getGroups ()) {
                 taskContext.broadcastForGroup (group);
             }
         } catch (TelegramApiException tapie) {
@@ -299,14 +302,14 @@ public class CommonChatContext implements ChatContext {
     
     private void editTask (UserContext user, Message message, String query) throws CommandProcessingException {
         final var parsedQuery = InlineQueryProcessor.parseQuery (query);
-        final var task = parsedQuery.getTask ();
-        final var type = parsedQuery.getType ();
-        final var id = parsedQuery.getId ();
-        
         TaskCommandValidator.checkError (parsedQuery);
         TaskCommandValidator.checkId (parsedQuery);
         TaskCommandValidator.checkTask (parsedQuery);
         TaskCommandValidator.checkType (parsedQuery);
+        
+        final var task = parsedQuery.getTask ();
+        final var type = parsedQuery.getType ();
+        final var id = parsedQuery.getId ();
         
         final var taskContext = taskContextService.findContext (id);
         if (taskContext == null) {
@@ -408,6 +411,28 @@ public class CommonChatContext implements ChatContext {
         } catch (TelegramApiException tapie) {
             log.error ("Failed to send message", tapie);
         }
+    }
+    
+    private void writeMetainformation (String query) throws CommandProcessingException {
+        final var parsedQuery = InlineQueryProcessor.parseQuery (query);
+        TaskCommandValidator.checkError (parsedQuery);
+        TaskCommandValidator.checkKey (parsedQuery);
+        TaskCommandValidator.checkValue (parsedQuery);
+        
+        final var key = parsedQuery.getKey ();
+        final var value = parsedQuery.getValue ();
+        
+        final var metaInformation = chatMetaInformationService.findOrCreateByChatAndKey (chatId, key);
+        metaInformation.setValue ("null".equals (value) ? null : value);
+        
+        try {
+            TelegramBot.getInstance ().sendMessage (chatId, cfg -> {
+                cfg.text ("Записано значение метаинформации для этого чата\n<code>" + key + ": " + value + "</code>");
+            });
+        } catch (TelegramApiException tapie) {
+            log.error ("Failed to send message", tapie);
+        }
+        
     }
     
 }

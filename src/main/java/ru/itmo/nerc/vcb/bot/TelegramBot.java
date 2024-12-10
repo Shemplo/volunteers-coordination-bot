@@ -24,7 +24,6 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.chat.ChatContextService;
-import ru.itmo.nerc.vcb.bot.chat.InlineQueryProcessor;
 import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
 import ru.itmo.nerc.vcb.utils.thread.ThreadsPool;
 

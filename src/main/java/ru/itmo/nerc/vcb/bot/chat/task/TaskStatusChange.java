@@ -17,16 +17,16 @@ import ru.itmo.nerc.vcb.db.DatabaseService;
 @ToString
 public class TaskStatusChange {
     
-    private long id;
+    private final long id;
     
-    private long taskId;
-    private String content;
-    private String group;
+    private final long taskId;
+    private volatile String content;
+    private volatile String group;
     
-    private Long chatId;
-    private Integer messageId;
-    private Date changeDate;
-    private long authorId;
+    private volatile Long chatId;
+    private volatile Integer messageId;
+    private final Date changeDate;
+    private final long authorId;
     
     @Builder
     public TaskStatusChange (long taskId, String content, Long chatId, Integer messageId, Date changeDate, UserContext user) {

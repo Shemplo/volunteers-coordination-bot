@@ -8,7 +8,7 @@ import org.telegram.telegrambots.meta.api.objects.Message;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import ru.itmo.nerc.vcb.bot.chat.InlineQueryProcessor.ParsedQuery;
+import ru.itmo.nerc.vcb.bot.InlineQueryProcessor.ParsedQuery;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 import ru.itmo.nerc.vcb.db.DatabaseService;
 

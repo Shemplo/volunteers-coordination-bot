@@ -13,11 +13,11 @@ import ru.itmo.nerc.vcb.db.DatabaseService;
 @Getter
 public class TaskStatusMessage {
     
-    private long id;
+    private final long id;
     
-    private long taskId;
-    private long chatId;
-    private int messageId;
+    private final long taskId;
+    private final long chatId;
+    private final int messageId;
     
     public TaskStatusMessage (TaskContext task, Message message) {
         chatId = message.getChatId ();

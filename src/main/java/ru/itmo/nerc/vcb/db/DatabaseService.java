@@ -107,6 +107,19 @@ public class DatabaseService {
             connection.prepareStatement ("""
                 CREATE UNIQUE INDEX IF NOT EXISTS fast_all_id ON task_status_message (task_id, chat_id, message_id)
             """).execute ();
+            
+            // Meta information
+            connection.prepareStatement ("""
+                CREATE TABLE IF NOT EXISTS chat_meta_information (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id BIGINT NOT NULL,
+                    information_key VARCHAR(255) NOT NULL,
+                    value TEXT NULL
+                )
+            """).execute ();
+            connection.prepareStatement ("""
+                CREATE UNIQUE INDEX IF NOT EXISTS unique_id ON chat_meta_information (chat_id, information_key)
+            """).execute ();
         });
     }
     
