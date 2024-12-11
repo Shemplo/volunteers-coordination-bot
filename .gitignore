@@ -3,6 +3,7 @@
 /.factorypath
 /.project
 /db/*.db
+/dependency-reduced-pom.xml
 /cfg/*.yml
 /*.db
 
