@@ -189,8 +189,6 @@ public class CommonChatContext implements ChatContext {
             throw new CommandProcessingException ("Недостаточно прав для выполнениия этой операции");
         }
         
-        //call.run ();
-        //return true;
         if (pendings.isEmpty () || !pendings.peek ().isBlocking ()) {
             call.run ();
             return true;

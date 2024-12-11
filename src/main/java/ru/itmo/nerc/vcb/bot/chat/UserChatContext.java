@@ -65,7 +65,6 @@ public class UserChatContext extends CommonChatContext {
     
     public void authenticateUser (UserContext user, Message message, String code) throws CommandProcessingException {
         if (code.length () == 0) {
-            //throw new CommandProcessingException ("Необходимо передать параметер <code>[code]</code>");
             try {
                 pendings.add (new CodeAuthenticationPending (this, user));
                 throw new PendingAddedException (CodeAuthenticationPending.class);
@@ -93,14 +92,6 @@ public class UserChatContext extends CommonChatContext {
         }
         
         throw new CommandProcessingException ("Неправильный код. Попробуйте ещё раз 😢");
-        
-        /*
-        try {
-            TelegramBot.getInstance ().setReactionOnMessage (message, "👎");
-        } catch (TelegramApiException tapie) {
-            log.error ("Failed to reaction message", tapie);
-        }
-        */
     }
     
     private void printHelp (UserContext user) throws CommandProcessingException {
@@ -186,7 +177,7 @@ public class UserChatContext extends CommonChatContext {
         if (user.getGroup () == null) {
             try {
                 TelegramBot.getInstance ().sendMessage (chatId, cfg -> {
-                    cfg.text ("Вы не подписаны на уведомления ни какой группы");
+                    cfg.text ("Вы не состоите ни в какой группе");
                 });
             } catch (TelegramApiException tapie) {
                 log.error ("Failed to send message", tapie);
@@ -199,7 +190,7 @@ public class UserChatContext extends CommonChatContext {
             }
             
             final var sb = new StringBuilder ();
-            sb.append ("Вы подписаны на уведомления группы <b>").append (eventGroup.getDisplayName ()).append ("</b>\n\n");
+            sb.append ("Вы состоите в группе <b>").append (eventGroup.getDisplayName ()).append ("</b> и будете получать все уведомления о задачах, назначенных этой группе\n\n");
             
             final var members = userContextService.findGroupMembers (eventGroup.getShortName ()).stream ()
                 . filter (member -> member.getUsername () != null)
