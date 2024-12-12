@@ -62,8 +62,10 @@ public class CommonChatContext implements ChatContext {
     
     @Override
     public boolean onUpdateReceived (Update update) throws TelegramApiException {
+        UserContext user = null;
+        
         if (update.hasCallbackQuery ()) {
-            final var user = userContextService.findContextForUser (update.getCallbackQuery ().getFrom ());
+            user = userContextService.findContextForUser (update.getCallbackQuery ().getFrom ());
             final var message = (Message) update.getCallbackQuery ().getMessage ();
             
             final var callback = update.getCallbackQuery ().getData ();
@@ -77,16 +79,16 @@ public class CommonChatContext implements ChatContext {
                     processCommand (user, message, new Pair <> (command, argument));
                     return true;
                 } catch (CommandProcessingException cpe) {
-                    processCommandProcessingException (message, cpe);
+                    processCommandProcessingException (user, message, cpe);
                     return false;
                 }
             }
         } else if (update.hasMessage () && update.getMessage ().hasText ()) {
             final var message = update.getMessage ();
+            user = userContextService.findContextForUser (message.getFrom ());
+            
             final var commands = ChatUtils.fetchCommand (message);
             log.info ("Fetched commands: {}", commands);
-            
-            final var user = userContextService.findContextForUser (message.getFrom ());
             
             if (message.getReplyToMessage () != null && message.getReplyToMessage ().hasText ()) {
                 final var replyTo = message.getReplyToMessage ();
@@ -99,7 +101,7 @@ public class CommonChatContext implements ChatContext {
                         processCommand (user, message, new Pair <> (ANSWER_TASK_COMMAND, "id " + taskId + "; answer " + message.getText ()));
                         return true;
                     } catch (CommandProcessingException cpe) {
-                        processCommandProcessingException (message, cpe);
+                        processCommandProcessingException (user, message, cpe);
                         return false;
                     }
                 }
@@ -120,7 +122,7 @@ public class CommonChatContext implements ChatContext {
                 case KEEP         -> false; // Do nothing, pending is not resolved
             };
         } catch (CommandProcessingException cpe) {
-            processCommandProcessingException (update.getMessage (), cpe);
+            processCommandProcessingException (user, update.getMessage (), cpe);
             return true;
         }
     }
@@ -143,7 +145,7 @@ public class CommonChatContext implements ChatContext {
                     
                     return true;
                 } else {
-                    processCommandProcessingException (message, cpe);
+                    processCommandProcessingException (user, message, cpe);
                     return false;
                 }
             }
@@ -168,7 +170,7 @@ public class CommonChatContext implements ChatContext {
         };
     }
     
-    protected void processCommandProcessingException (Message message, CommandProcessingException exception) throws TelegramApiException {
+    protected void processCommandProcessingException (UserContext user, Message message, CommandProcessingException exception) throws TelegramApiException {
         if (message != null) {
             TelegramBot.getInstance ().sendReplyMessage (message, cfg -> {
                 cfg.text (exception.getMessage ());
@@ -231,10 +233,11 @@ public class CommonChatContext implements ChatContext {
         TaskCommandValidator.checkError (parsedQuery);
         TaskCommandValidator.checkAnswer (parsedQuery);
         TaskCommandValidator.checkId (parsedQuery);
-        TaskCommandValidator.checkUserGroup (user);
+        final var id = parsedQuery.getId ();
+        
+        TaskCommandValidator.checkUserGroup (user, id);
         
         final var answer = parsedQuery.getAnswer ();
-        final var id = parsedQuery.getId ();
         
         final var task = taskContextService.findContext (id);
         if (task == null) {
@@ -294,7 +297,7 @@ public class CommonChatContext implements ChatContext {
         taskContext.setState (user, taskContext.isEnabled () ? TaskState.DISABLED : TaskState.ENABLED);
         
         for (final var group : includeGroups) {
-            taskContext.broadcastUpdateForGroup (group, false);
+            taskContext.broadcastUpdateForGroup (group, taskContext.isEnabled ());
         }
     }
     

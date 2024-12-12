@@ -51,9 +51,9 @@ public class TaskCommandValidator {
         }
     }
     
-    public void checkUserGroup (UserContext user) throws CommandProcessingException {
+    public void checkUserGroup (UserContext user, long taskId) throws CommandProcessingException {
         if (user.getGroup () == null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nВы не можете обновить статус задачи, потому что не состоите ни в одной группе");
+            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nВы не можете обновить статус задачи, потому что не состоите ни в одной группе\n#tid" + taskId);
         }
     }
     
