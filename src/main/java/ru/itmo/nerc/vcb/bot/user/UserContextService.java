@@ -62,9 +62,6 @@ public class UserContextService {
         return DatabaseService.getInstance ().mapWrappedOrNull (connection -> {
             final var inFilter = groups.stream ().collect (Collectors.joining ("','", "('", "')"));
             try (final var selectStatement = connection.prepareStatement ("SELECT id FROM user WHERE subscription_group IN " + inFilter)) {
-                //int i = 1;
-                //selectStatement.setArray (i++, connection.createArrayOf ("VARCHAR", groups.toArray (String []::new)));
-                
                 final var members = new ArrayList <UserContext> ();
                 try (final var queryResult = selectStatement.executeQuery ()) {
                     while (queryResult.next ()) {

@@ -238,7 +238,7 @@ public class TaskContext {
             prepareGroupMessage (group, (text, keyboard) -> {
                 for (final var member : UserContextService.getInstance ().findGroupMembers (group)) {
                     if (member.getUserId () == authorId) {
-                        continue;
+                        //continue;
                     }
                     
                     log.info ("Broadcast message to @{}...", member.getUsername ());
@@ -259,7 +259,7 @@ public class TaskContext {
             prepareGroupMessage (group, (text, keyboard) -> {
                 for (final var member : UserContextService.getInstance ().findGroupMembers (group)) {
                     if (member.getUserId () == authorId) {
-                        continue;
+                        //continue;
                     }
                     
                     log.info ("Broadcast update to @{}...", member.getUsername ());
