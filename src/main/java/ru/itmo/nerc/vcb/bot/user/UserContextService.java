@@ -48,9 +48,7 @@ public class UserContextService {
     }
     
     public UserContext findContextForExistingUser (long userId) {
-        final var tmpUser = new User ();
-        tmpUser.setId (userId);
-        
+        final var tmpUser = new User (userId, "", false);
         return findContextForUser (tmpUser);
     }
     
@@ -65,8 +63,7 @@ public class UserContextService {
                 final var members = new ArrayList <UserContext> ();
                 try (final var queryResult = selectStatement.executeQuery ()) {
                     while (queryResult.next ()) {
-                        final var tmpUser = new User ();
-                        tmpUser.setId (queryResult.getLong ("id"));
+                        final var tmpUser = new User (queryResult.getLong ("id"), "", false);
                         members.add (findContextForUser (tmpUser));
                     }
                 }

@@ -238,7 +238,7 @@ public class TaskContext {
             prepareGroupMessage (group, (text, keyboard) -> {
                 for (final var member : UserContextService.getInstance ().findGroupMembers (group)) {
                     if (member.getUserId () == authorId) {
-                        //continue;
+                        continue;
                     }
                     
                     log.info ("Broadcast message to @{}...", member.getUsername ());
@@ -259,7 +259,7 @@ public class TaskContext {
             prepareGroupMessage (group, (text, keyboard) -> {
                 for (final var member : UserContextService.getInstance ().findGroupMembers (group)) {
                     if (member.getUserId () == authorId) {
-                        //continue;
+                        continue;
                     }
                     
                     log.info ("Broadcast update to @{}...", member.getUsername ());
@@ -285,7 +285,7 @@ public class TaskContext {
         appendGroupStatus (sj, group, event);
         appendStateInformation (sj);
         
-        doOnReady.accept (sj.toString (), prepareMarkup (false));
+        doOnReady.accept (sj.toString (), prepareMarkup (false, List.of ()));
     }
     
     public void updateMessage () {
@@ -302,13 +302,17 @@ public class TaskContext {
             
             sj.add ("");
             sj.add ("🕵️‍♂️ <b>Текущий статус задачи:</b>");
+            final var groupsWithStatus = new ArrayList <TaskStatusChange> ();
             for (final var group : groups) {
-                appendGroupStatus (sj, group, event);
+                final var status = appendGroupStatus (sj, group, event);
+                if (status != null) {
+                    groupsWithStatus.add (status);
+                }
             }
             
             appendStateInformation (sj);
             
-            final var markup = prepareMarkup (true);
+            final var markup = prepareMarkup (true, groupsWithStatus);
             
             TelegramBot.getInstance ().sendMessageEdit (chatId, messageId, cfg -> {
                 cfg.text (sj.toString ());
@@ -319,7 +323,7 @@ public class TaskContext {
         }
     }
     
-    private StringJoiner appendGroupStatus (StringJoiner sj, String group, BotEventConfiguration event) {
+    private TaskStatusChange appendGroupStatus (StringJoiner sj, String group, BotEventConfiguration event) {
         final var taskStatusChangeService = TaskStatusChangeService.getInstance ();
         final var userContextService = UserContextService.getInstance ();
         
@@ -336,9 +340,9 @@ public class TaskContext {
             final var changeAuthor = userContextService.findContextForExistingUser (status.getAuthorId ());
             
             sj.add (
-                    "<i><u>" + eventGroup.getDisplayName () + ":</u></i> @" + changeAuthor.getUsername ()
-                    + " в " + DateUtils.dateFormatShort.format (status.getChangeDate ())
-                    );
+                "<i><u>" + eventGroup.getDisplayName () + ":</u></i> @" + changeAuthor.getUsername ()
+                + " в " + DateUtils.dateFormatShort.format (status.getChangeDate ())
+            );
             sj.add (status.getContent ());
         } else if (isTask ()) {
             //final var changeAuthor = TelegramBot.getInstance ().getChatMember (chatId, status.getAuthorId ());
@@ -349,7 +353,7 @@ public class TaskContext {
             sj.add ("👤 @" + changeAuthor.getUsername ());
         }
         
-        return sj;
+        return status;
     }
     
     private void appendStateInformation (StringJoiner sj) {
@@ -367,9 +371,8 @@ public class TaskContext {
         }
     }
     
-    private InlineKeyboardMarkup prepareMarkup (boolean forSourceMessage) {
-        final var markup = new InlineKeyboardMarkup ();
-        markup.setKeyboard (new ArrayList <> ());
+    private InlineKeyboardMarkup prepareMarkup (boolean forSourceMessage, List <TaskStatusChange> groupsWithStatus) {
+        final var markup = new InlineKeyboardMarkup (new ArrayList <> ());
         
         if (isEnabled ()) {
             if (isQuestion ()) {
@@ -412,6 +415,21 @@ public class TaskContext {
                 .text (isEnabled () ? "⏯️ Приостановить" : "▶️ Запустить")
                 .callbackData ("/activationtask id " + id)
                 .build ());
+            
+            if (!groupsWithStatus.isEmpty ()) {
+                final var userContextService = UserContextService.getInstance ();
+                
+                final var replyRow = new ArrayList <InlineKeyboardButton> ();
+                markup.getKeyboard ().add (replyRow);
+                
+                for (final var status : groupsWithStatus) {
+                    final var changeAuthor = userContextService.findContextForExistingUser (status.getAuthorId ());
+                    replyRow.add (InlineKeyboardButton.builder ()
+                        .text (status.getGroup ())
+                        .switchInlineQueryCurrentChat ("@" + changeAuthor.getUsername () + ", вопрос по задаче #tid" + id + "\n")
+                        .build ());
+                }
+            }
         }
         
         return markup;
