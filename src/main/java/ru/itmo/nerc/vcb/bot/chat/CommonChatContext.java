@@ -293,10 +293,9 @@ public class CommonChatContext implements ChatContext {
         final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
         parsedQuery.setEvent (event);
         
-        final var includeGroups = parsedQuery.getGroupsSplit ().a;
         taskContext.setState (user, taskContext.isEnabled () ? TaskState.DISABLED : TaskState.ENABLED);
         
-        for (final var group : includeGroups) {
+        for (final var group : taskContext.getGroups ()) {
             taskContext.broadcastUpdateForGroup (group, taskContext.isEnabled ());
         }
     }
@@ -323,7 +322,7 @@ public class CommonChatContext implements ChatContext {
         final var includeGroups = parsedQuery.getGroupsSplit ().a;
         taskContext.setTask (task).setType (type).setGroups (includeGroups);
         
-        for (final var group : includeGroups) {
+        for (final var group : taskContext.getGroups ()) {
             taskContext.broadcastUpdateForGroup (group, true);
         }
     }

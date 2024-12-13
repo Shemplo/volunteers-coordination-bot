@@ -84,9 +84,16 @@ public class TaskUpdatesBroadcast implements SupervisedRunnable {
             }
             
             if (taskEdited) {
-                bot.sendMessage (chatId, cfg -> {
-                    cfg.text ("‼️ Задача #tid" + task.getId () + " была изменена. Проверьте, что ответ группы, в которой вы состоите, актуален и соответствует изменению");
-                });
+                final var messageThatEdited = "‼️ Задача #tid" + task.getId () + " была изменена. Проверьте, что ответ группы, в которой вы состоите, актуален и соответствует изменению";
+                if (statusMessage == null) {
+                    bot.sendMessage (chatId, cfg -> {
+                        cfg.text (messageThatEdited);
+                    });
+                } else {
+                    bot.sendReplyMessage (chatId, statusMessage.getMessageId (), cfg -> {
+                        cfg.text (messageThatEdited);
+                    });
+                }
             }
         });
     }
