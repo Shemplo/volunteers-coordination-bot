@@ -7,12 +7,13 @@ import java.util.Queue;
 import org.antlr.v4.runtime.misc.Pair;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
-import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.MessageEntity;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.experimental.UtilityClass;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
+import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
 
 @UtilityClass
 public class ChatUtils {
@@ -22,7 +23,8 @@ public class ChatUtils {
             return new LinkedList <> ();
         }
         
-        final var botUsername = "@" + TelegramBot.getInstance ().getBotUsername ();
+        final var configuration = ConfigurationHolder.getConfigurationFromSingleton ();
+        final var botUsername = "@" + configuration.getCredentials ().getBotName ();
         
         final var commands = new ArrayList <MessageEntity> ();
         for (final var entity : message.getEntities ()) {
@@ -55,12 +57,11 @@ public class ChatUtils {
     }
     
     public static SendMessage prepareHTML (long chatId, String content) {
-        final var message = new SendMessage ();
-        message.setChatId (String.valueOf (chatId));
-        message.setParseMode ("HTML");
-        message.setText (content);
-        
-        return message;
+        return SendMessage.builder ()
+             . chatId (chatId)
+             . text (content)
+             . parseMode ("HTML")
+             . build ();
     }
     
     public static void hideInlineMarkup (long chatId, int messageId) throws TelegramApiException {
@@ -69,7 +70,7 @@ public class ChatUtils {
         edit.setChatId (chatId);
         edit.setReplyMarkup (null);
         
-        TelegramBot.getInstance ().execute (edit);
+        TelegramBot.getInstance ().getTelegramClient ().execute (edit);
     }
     
 }

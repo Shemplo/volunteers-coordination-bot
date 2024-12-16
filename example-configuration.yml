@@ -1,0 +1,27 @@
+credentials:
+    # Telegram bot name
+    botName: aaa_bot
+    # Telegram bot token
+    token: 0000000000:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    # Map of roles and authentication codes, absent roles
+    # can't be authenticated
+    roleAuthentication:
+        PARTICIPANT: a
+        MODERATOR: b
+database:
+    # Filename (path) of database
+    filename: database-name.db
+# Informtation that is displayed by /eventinfo command
+event:
+    # Name of the event (displayed at the top)
+    name: NERC Final 2024-2025
+    # Timetable of event (can be inserted here or in separate file)
+    timetable: example-timetable.yml
+    # Groups where users can join and then receive notifications about tasks
+    groups:
+        - shortName: 1
+          displayName: Hall 1
+        - shortName: 2
+          displayName: Hall 2
+        - shortName: '*'
+          displayName: Hall *

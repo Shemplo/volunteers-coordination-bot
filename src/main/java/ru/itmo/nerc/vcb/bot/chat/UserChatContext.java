@@ -6,9 +6,9 @@ import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.misc.Pair;
-import org.telegram.telegrambots.meta.api.objects.Chat;
-import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.chat.Chat;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.extern.slf4j.Slf4j;

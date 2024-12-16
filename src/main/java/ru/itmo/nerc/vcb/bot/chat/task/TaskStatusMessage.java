@@ -3,7 +3,7 @@ package ru.itmo.nerc.vcb.bot.chat.task;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;

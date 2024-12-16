@@ -2,7 +2,7 @@ package ru.itmo.nerc.vcb.bot.chat.task;
 
 import java.util.Date;
 
-import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;

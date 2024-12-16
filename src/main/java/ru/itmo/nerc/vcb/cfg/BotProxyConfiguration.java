@@ -1,6 +1,6 @@
 package ru.itmo.nerc.vcb.cfg;
 
-import org.telegram.telegrambots.bots.DefaultBotOptions.ProxyType;
+import java.net.Proxy.Type;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,6 +14,6 @@ public class BotProxyConfiguration {
     
     private String host;
     private int port;
-    private ProxyType type;
+    private Type type;
     
 }

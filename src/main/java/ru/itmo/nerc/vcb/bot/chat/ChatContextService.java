@@ -3,7 +3,7 @@ package ru.itmo.nerc.vcb.bot.chat;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.telegram.telegrambots.meta.api.objects.Chat;
+import org.telegram.telegrambots.meta.api.objects.chat.Chat;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;

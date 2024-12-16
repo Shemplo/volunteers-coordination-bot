@@ -2,12 +2,12 @@ package ru.itmo.nerc.vcb;
 
 import java.sql.SQLException;
 
-import org.telegram.telegrambots.meta.TelegramBotsApi;
+import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
-import ru.itmo.nerc.vcb.bot.TelegramBotSession;
+import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
 import ru.itmo.nerc.vcb.db.DatabaseService;
 
 @Slf4j
@@ -24,13 +24,19 @@ public class RunVolunteersCoordinationBot {
         }
         
         log.info ("Starting VC bot...");
+        final var configuration = ConfigurationHolder.getConfigurationFromSingleton ();
+        final var botToken = configuration.getCredentials ().getToken ();
+        
         try {
-            final var api = new TelegramBotsApi (TelegramBotSession.class);
-            api.registerBot (TelegramBot.getInstance ());
+            final var application = new TelegramBotsLongPollingApplication ();
+            //final var api = new TelegramBotsApi (TelegramBotSession.class);
+            application.registerBot (botToken, TelegramBot.getInstance ());
             
             log.info ("Starting VC bot... DONE");
         } catch (TelegramApiException tapie) {
             log.error ("Failed to start VC bot", tapie);
+        } catch (Exception e) {
+            log.error ("Failed to stop VC bot", e);
         }
     }
     

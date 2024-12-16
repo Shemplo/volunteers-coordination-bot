@@ -1,12 +1,12 @@
 package ru.itmo.nerc.vcb.bot.chat.pending;
 
 import java.util.ArrayList;
-import java.util.List;
 
-import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.Getter;
@@ -58,12 +58,13 @@ public class ChooseSubscriptionGroupPending extends AbstractChatPendingWithMenu 
         
         final var keyboard = new InlineKeyboardMarkup (new ArrayList <> ());
         for (final var group : event.getGroups ()) {
-            keyboard.getKeyboard ().add (List.of (
-                InlineKeyboardButton.builder ()
-                    .text (group.getDisplayName ())
-                    .callbackData (CALLBACK_PREFIX + " " + group.getShortName ())
-                    .build ()
-            ));
+            final var row = new InlineKeyboardRow ();
+            keyboard.getKeyboard ().add (row);
+            
+            row.add (InlineKeyboardButton.builder ()
+                .text (group.getDisplayName ())
+                .callbackData (CALLBACK_PREFIX + " " + group.getShortName ())
+                .build ());
         }
         
         message = TelegramBot.getInstance ().sendReplyMessage (initialMessage, cfg -> {

@@ -11,9 +11,10 @@ import java.util.Objects;
 import java.util.StringJoiner;
 
 import org.apache.commons.lang3.function.FailableBiConsumer;
-import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.Getter;
@@ -378,7 +379,7 @@ public class TaskContext {
             if (isQuestion ()) {
                 
             } else if (isTask ()) {
-                final var processRow = new ArrayList <InlineKeyboardButton> ();
+                final var processRow = new InlineKeyboardRow ();
                 markup.getKeyboard ().add (processRow);
                 
                 final var inProcessText = "💃 В процессе";
@@ -394,7 +395,7 @@ public class TaskContext {
                     .build ());
             }
             
-            final var commentRow = new ArrayList <InlineKeyboardButton> ();
+            final var commentRow = new InlineKeyboardRow ();
             markup.getKeyboard ().add (commentRow);
             
             commentRow.add (InlineKeyboardButton.builder ()
@@ -404,7 +405,7 @@ public class TaskContext {
         }
         
         if (forSourceMessage) {
-            final var editorRow = new ArrayList <InlineKeyboardButton> ();
+            final var editorRow = new InlineKeyboardRow ();
             markup.getKeyboard ().add (editorRow);
             
             editorRow.add (InlineKeyboardButton.builder ()
@@ -419,7 +420,7 @@ public class TaskContext {
             if (!groupsWithStatus.isEmpty ()) {
                 final var userContextService = UserContextService.getInstance ();
                 
-                final var replyRow = new ArrayList <InlineKeyboardButton> ();
+                final var replyRow = new InlineKeyboardRow ();
                 markup.getKeyboard ().add (replyRow);
                 
                 for (final var status : groupsWithStatus) {

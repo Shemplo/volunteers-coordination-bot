@@ -1,6 +1,6 @@
 package ru.itmo.nerc.vcb.bot.chat.pending;
 
-import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import ru.itmo.nerc.vcb.bot.chat.ChatContext;

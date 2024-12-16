@@ -12,9 +12,9 @@ import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.misc.Pair;
 import org.apache.commons.lang3.function.FailableRunnable;
-import org.telegram.telegrambots.meta.api.objects.Chat;
-import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.chat.Chat;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.Getter;
@@ -337,31 +337,34 @@ public class CommonChatContext implements ChatContext {
     
     private void showEventInfo (Message message) {
         final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
-        Collections.sort (event.getTimetable ().getActivities (), Comparator.comparing (EventActivity::getFrom));
         
         final var sj = new StringJoiner ("\n");
         sj.add ("<b>Событие:</b> " + event.getName ());
         
-        final var now = new Date ();
-        final var currentActivity = event.getTimetable ().getActivities ().stream ()
-            . filter (activity -> activity.getFrom ().before (now) && activity.getTo ().after (now))
-            . findFirst ()
-            . orElse (null);
-        sj.add ("");
-        sj.add ("<b>Текущая активность:</b>\n" + (currentActivity == null ? "отсутсвует" : currentActivity.getActivity ()));
-        if (currentActivity != null) {
-            sj.add ("<i>До " + DateUtils.dateFormatNoSeconds.format (currentActivity.getTo ()) + "</i>");
-        }
-        
-        final var nextActivity = event.getTimetable ().getActivities ().stream ()
-            . filter (activity -> activity.getFrom ().after (now))
-            . findFirst ()
-            . orElse (null);
-        sj.add ("");
-        sj.add ("<b>Следующая активность:</b>\n" + (nextActivity == null ? "отсутсвует" : nextActivity.getActivity ()));
-        if (nextActivity != null) {
-            sj.add ("<i>C   " + DateUtils.dateFormatNoSeconds.format (nextActivity.getFrom ()) + "</i>");
-            sj.add ("<i>До " + DateUtils.dateFormatNoSeconds.format (nextActivity.getTo ()) + "</i>");
+        if (event.getTimetable () != null && event.getTimetable ().getActivities () != null) {
+            Collections.sort (event.getTimetable ().getActivities (), Comparator.comparing (EventActivity::getFrom));
+            
+            final var now = new Date ();
+            final var currentActivity = event.getTimetable ().getActivities ().stream ()
+                . filter (activity -> activity.getFrom ().before (now) && activity.getTo ().after (now))
+                . findFirst ()
+                . orElse (null);
+            sj.add ("");
+            sj.add ("<b>Текущая активность:</b>\n" + (currentActivity == null ? "отсутсвует" : currentActivity.getActivity ()));
+            if (currentActivity != null) {
+                sj.add ("<i>До " + DateUtils.dateFormatNoSeconds.format (currentActivity.getTo ()) + "</i>");
+            }
+            
+            final var nextActivity = event.getTimetable ().getActivities ().stream ()
+                . filter (activity -> activity.getFrom ().after (now))
+                . findFirst ()
+                . orElse (null);
+            sj.add ("");
+            sj.add ("<b>Следующая активность:</b>\n" + (nextActivity == null ? "отсутсвует" : nextActivity.getActivity ()));
+            if (nextActivity != null) {
+                sj.add ("<i>C   " + DateUtils.dateFormatNoSeconds.format (nextActivity.getFrom ()) + "</i>");
+                sj.add ("<i>До " + DateUtils.dateFormatNoSeconds.format (nextActivity.getTo ()) + "</i>");
+            }
         }
         
         try {

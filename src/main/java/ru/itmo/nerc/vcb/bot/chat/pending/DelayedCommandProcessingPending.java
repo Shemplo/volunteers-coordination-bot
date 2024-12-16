@@ -1,8 +1,8 @@
 package ru.itmo.nerc.vcb.bot.chat.pending;
 
 import org.antlr.v4.runtime.misc.Pair;
-import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.Getter;
