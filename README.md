@@ -33,7 +33,7 @@ Bot supports inline queries with grammar defined in [this file](https://github.c
 So you can type something after `@your_bot` and quick completions for commands will be shown based on keywords that you used.
 
 **Create task** (moderator role required): you can type `@your_bot task Task content` (do not use `;` character as task content) and this will show completion with 2 options for creating question or task for completion for all available groups.
-If you need to specify assigment to groups you can add `@your_bot task Task content; groups 1, 2, ...`, also bots supports nerations, so you can write `...; groups -1, -2` and this will mean that task is assigned to all groups except `1` and `2`.
+If you need to specify assigment to groups you can add `@your_bot task Task content; groups 1, 2, ...`, also bot supports nerations, so you can write `...; groups -1, -2` and this will mean that task is assigned to all groups except `1` and `2`.
 
 **Answer task** (at least participant role required): tasks have button that will automatically fill inline query template for the answer, it will look like `@your_bot id 8; answer`, and all you need is to click on suggested quick response or 
 type answer (do not use `;`) after `answer` keyword and click on suggested option.
