@@ -36,6 +36,7 @@ import ru.itmo.nerc.vcb.db.DateUtils;
 @ToString
 public class TaskContext {
  
+    public static final String TYPE_CHECK = "check";
     public static final String TYPE_QUESTION = "question";
     public static final String TYPE_TASK = "task";
     
@@ -165,6 +166,10 @@ public class TaskContext {
         }
     }
     
+    public boolean isCheck () {
+        return TYPE_CHECK.equals (type);
+    }
+    
     public boolean isQuestion () {
         return TYPE_QUESTION.equals (type);
     }
@@ -230,14 +235,30 @@ public class TaskContext {
         return this;
     }
     
-    public void broadcastForGroup (String group) {
+    public void broadcastTextMessageForGroup (String group, String text) {
+        log.info ("Sending broadcast text message to `{}` group...:\n{}", group, text);
+        final var taskUpdatesBroadcast = TaskUpdatesBroadcast.getInstance ();
+        final var userContextService = UserContextService.getInstance ();
+        
+        for (final var member : userContextService.findGroupMembers (group)) {
+            if (member.getUserId () == authorId) {
+                continue;
+            }
+            
+            log.info ("Broadcast message to @{}...", member.getUsername ());
+            taskUpdatesBroadcast.sendBroadcastMessage (this, member.getPrivateChatId (), text, null);
+        }
+    }
+    
+    public void broadcastTaskForGroup (String group) {
         log.info ("Sending broadcast message to `{}` group...", group);
         
         try {
             final var taskUpdatesBroadcast = TaskUpdatesBroadcast.getInstance ();
+            final var userContextService = UserContextService.getInstance ();
             
             prepareGroupMessage (group, (text, keyboard) -> {
-                for (final var member : UserContextService.getInstance ().findGroupMembers (group)) {
+                for (final var member : userContextService.findGroupMembers (group)) {
                     if (member.getUserId () == authorId) {
                         continue;
                     }
@@ -251,14 +272,15 @@ public class TaskContext {
         }
     }
     
-    public void broadcastUpdateForGroup (String group, boolean taskEdited) {
+    public void broadcastTaskUpdateForGroup (String group, boolean taskEdited) {
         log.info ("Sending broadcast message update to `{}` group...", group);
         
         try {
             final var taskUpdatesBroadcast = TaskUpdatesBroadcast.getInstance ();
+            final var userContextService = UserContextService.getInstance ();
             
             prepareGroupMessage (group, (text, keyboard) -> {
-                for (final var member : UserContextService.getInstance ().findGroupMembers (group)) {
+                for (final var member : userContextService.findGroupMembers (group)) {
                     if (member.getUserId () == authorId) {
                         continue;
                     }
@@ -336,8 +358,9 @@ public class TaskContext {
         
         if (status == null) {
             sj.add ("<i><u>" + eventGroup.getDisplayName () + ":</u></i> 🙈 Не заметили задание");
+        } else if (isCheck ()) {
+            sj.add ("[Not implemented for check tasks yet]");
         } else if (isQuestion ()) {
-            //final var changeAuthor = TelegramBot.getInstance ().getChatMember (chatId, status.getAuthorId ());
             final var changeAuthor = userContextService.findContextForExistingUser (status.getAuthorId ());
             
             sj.add (
@@ -346,7 +369,6 @@ public class TaskContext {
             );
             sj.add (status.getContent ());
         } else if (isTask ()) {
-            //final var changeAuthor = TelegramBot.getInstance ().getChatMember (chatId, status.getAuthorId ());
             final var changeAuthor = userContextService.findContextForExistingUser (status.getAuthorId ());
             
             sj.add ("<i><u>" + eventGroup.getDisplayName () + ":</u></i> " + status.getContent ());
@@ -376,32 +398,28 @@ public class TaskContext {
         final var markup = new InlineKeyboardMarkup (new ArrayList <> ());
         
         if (isEnabled ()) {
-            if (isQuestion ()) {
+            if (isCheck ()) {
+                final var processRow = new InlineKeyboardRow ();
+                markup.getKeyboard ().add (processRow);
                 
+                processRow.add (makeDoneAnswer ());
+            } else if (isQuestion ()) {
+                final var commentRow = new InlineKeyboardRow ();
+                markup.getKeyboard ().add (commentRow);
+                
+                commentRow.add (makeFreeFormAnswer ());
             } else if (isTask ()) {
                 final var processRow = new InlineKeyboardRow ();
                 markup.getKeyboard ().add (processRow);
                 
-                final var inProcessText = "💃 В процессе";
-                processRow.add (InlineKeyboardButton.builder ()
-                    .text (inProcessText)
-                    .callbackData ("/answertask id " + id + "; answer " + inProcessText)
-                    .build ());
+                processRow.add (makeInProgressAnswer ());
+                processRow.add (makeDoneAnswer ());
                 
-                final var doneText = "✅ Выполнили";
-                processRow.add (InlineKeyboardButton.builder ()
-                    .text (doneText)
-                    .callbackData ("/answertask id " + id + "; answer " + doneText)
-                    .build ());
+                final var commentRow = new InlineKeyboardRow ();
+                markup.getKeyboard ().add (commentRow);
+                
+                commentRow.add (makeFreeFormAnswer ());
             }
-            
-            final var commentRow = new InlineKeyboardRow ();
-            markup.getKeyboard ().add (commentRow);
-            
-            commentRow.add (InlineKeyboardButton.builder ()
-                .text ("💭 Ответить в свободной форме")
-                .switchInlineQueryCurrentChat ("id " + id + "; answer\n")
-                .build ());
         }
         
         if (forSourceMessage) {
@@ -416,6 +434,16 @@ public class TaskContext {
                 .text (isEnabled () ? "⏯️ Приостановить" : "▶️ Запустить")
                 .callbackData ("/activationtask id " + id)
                 .build ());
+            
+            final var pingRow = new InlineKeyboardRow ();
+            markup.getKeyboard ().add (pingRow);
+            
+            for (final var group : groups) {
+                pingRow.add (InlineKeyboardButton.builder ()
+                    .text ("!" + group)
+                    .callbackData ("/pingtask id " + id + "; groups " + group)
+                    .build ());
+            }
             
             if (!groupsWithStatus.isEmpty ()) {
                 final var userContextService = UserContextService.getInstance ();
@@ -436,13 +464,39 @@ public class TaskContext {
         return markup;
     }
     
+    private InlineKeyboardButton makeDoneAnswer () {
+        final var doneText = "✅ Выполнили";
+        return InlineKeyboardButton.builder ()
+            .text (doneText)
+            .callbackData ("/answertask id " + id + "; answer " + doneText)
+            .build ();
+    }
+    
+    private InlineKeyboardButton makeInProgressAnswer () {
+        final var doneText = "💃 В процессе";
+        return InlineKeyboardButton.builder ()
+            .text (doneText)
+            .callbackData ("/answertask id " + id + "; answer " + doneText)
+            .build ();
+    }
+    
+    private InlineKeyboardButton makeFreeFormAnswer () {
+        return InlineKeyboardButton.builder ()
+            .text ("💭 Ответить в свободной форме")
+            .switchInlineQueryCurrentChat ("id " + id + "; answer\n")
+            .build ();
+    }
+    
     public static StringJoiner prepareShortTaskMessage (UserContext user, String task, String type) {
         final var sj = new StringJoiner ("\n");
         
+        final var isCheck = TYPE_CHECK.equals (type);
         final var isQuestion = TYPE_QUESTION.equals (type);
         final var isTask = TYPE_TASK.equals (type);
         
-        if (isQuestion) {
+        if (isCheck) {
+            sj.add ("‼️ <b>Новая проверка от</b> @" + user.getUsername () + " ‼️");
+        } else if (isQuestion) {
             sj.add ("‼️ <b>Новый вопрос от</b> @" + user.getUsername () + " ‼️");
         } else if (isTask) {
             sj.add ("‼️ <b>Новая задача от</b> @" + user.getUsername () + " ‼️");

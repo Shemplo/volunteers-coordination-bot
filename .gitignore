@@ -6,6 +6,7 @@
 /dependency-reduced-pom.xml
 /cfg/*.yml
 /*.db
+/*.log
 
 # Directories
 /.externalToolBuilders

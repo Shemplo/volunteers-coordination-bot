@@ -18,7 +18,7 @@
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
 
-        <telegram-sdk.version>8.0.0</telegram-sdk.version>
+        <telegram-sdk.version>9.2.0</telegram-sdk.version>
         <junit.version>5.11.3</junit.version>
 
         <application.mainClass>ru.itmo.nerc.vcb.RunVolunteersCoordinationBot</application.mainClass>

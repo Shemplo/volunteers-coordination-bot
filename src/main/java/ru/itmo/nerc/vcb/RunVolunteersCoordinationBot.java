@@ -28,8 +28,8 @@ public class RunVolunteersCoordinationBot {
         final var botToken = configuration.getCredentials ().getToken ();
         
         try {
+            @SuppressWarnings ("resource")
             final var application = new TelegramBotsLongPollingApplication ();
-            //final var api = new TelegramBotsApi (TelegramBotSession.class);
             application.registerBot (botToken, TelegramBot.getInstance ());
             
             log.info ("Starting VC bot... DONE");
