@@ -43,10 +43,10 @@ public class TaskCommandValidator {
         
         if (type == null) {
             throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[type]</code>");
-        } else if (!TaskContext.TYPE_TASK.equals (type) && !TaskContext.TYPE_QUESTION.equals (type)) {
+        } else if (!TaskContext.TYPE_TASK.equals (type) && !TaskContext.TYPE_QUESTION.equals (type) && !TaskContext.TYPE_CHECK.equals (type)) {
             throw new CommandProcessingException (
                 "<b>Ошибка в запросе:</b>\nТип задачи может быть только <code>" + TaskContext.TYPE_TASK
-                + "</code> или <code>" + TaskContext.TYPE_QUESTION + "</code>"
+                + "</code>, <code>" + TaskContext.TYPE_QUESTION + "</code> или <code>" + TaskContext.TYPE_CHECK + "</code>"
             );
         }
     }

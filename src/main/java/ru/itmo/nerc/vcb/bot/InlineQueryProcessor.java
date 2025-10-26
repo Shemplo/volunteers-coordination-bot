@@ -158,7 +158,7 @@ public class InlineQueryProcessor implements TelegramChildBot, SupervisedRunnabl
                         final var status = taskStatusChangeService.addNoticedChange (task, "👀 Заметили задание", user);
                         if (status != null) {
                             task.updateMessage ();
-                            task.broadcastForGroup (user.getGroup ());
+                            task.broadcastTaskForGroup (user.getGroup ());
                         }
                     }
                     
@@ -297,7 +297,6 @@ public class InlineQueryProcessor implements TelegramChildBot, SupervisedRunnabl
     private InlineQueryResult prepareAnswerResult (long taskId, String answer, String icon) {
         final var command = "/answertask id " + taskId + "; answer " + answer + "\n/dropmessage";
         return InlineQueryResultArticle.builder ()
-             . hideUrl (true)
              . id (UUID.nameUUIDFromBytes (command.getBytes ()).toString ())
              . title ("Ответ на задачу #tid" + taskId)
              . description (answer)
@@ -357,6 +356,10 @@ public class InlineQueryProcessor implements TelegramChildBot, SupervisedRunnabl
         new TaskQuerySuggestion (
             "Задача на выполнение", "Сделать задачей на выполнение",
             TaskContext.TYPE_TASK, "https://cdn.iconscout.com/icon/premium/png-256-thumb/task-71158.png?f=webp&w=64"
+        ),
+        new TaskQuerySuggestion (
+            "Задача на проверку холлов", "Сделать задачей на проверку холлов",
+            TaskContext.TYPE_CHECK, "https://cdn.iconscout.com/icon/premium/png-256-thumb/satisfy-icon-svg-download-png-2074811.png?f=webp&w=64"
         )
     );
     

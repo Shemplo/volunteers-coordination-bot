@@ -163,6 +163,7 @@ public class CommonChatContext implements ChatContext {
             case "/createtask" -> checkAndCall (user, UserRole.MODERATOR, () -> createTask (user, message, command.b));
             case "/dropmessage" -> checkAndCall (user, UserRole.UNKNOWN, () -> dropMessage (message));
             case "/edittask" -> checkAndCall (user, UserRole.MODERATOR, () -> editTask (user, message, command.b));
+            case "/pingtask" -> checkAndCall (user, UserRole.MODERATOR, () -> pingTask (user, command.b));
             case "/eventinfo" -> checkAndCall (user, UserRole.PARTICIPANT, () -> showEventInfo (message));
             case "/writemeta" -> checkAndCall (user, UserRole.PARTICIPANT, () -> writeMetainformation (command.b));
             
@@ -249,7 +250,7 @@ public class CommonChatContext implements ChatContext {
         taskStatusChangeService.addChange (task, answer, message, user);
         
         task.updateMessage ();
-        task.broadcastUpdateForGroup (user.getGroup (), false);
+        task.broadcastTaskUpdateForGroup (user.getGroup (), false);
     }
     
     private void createTask (UserContext user, Message message, String query) throws CommandProcessingException {
@@ -271,7 +272,7 @@ public class CommonChatContext implements ChatContext {
             
             final var taskContext = taskContextService.createContext (user, taskMessage, parsedQuery);
             for (final var group : taskContext.getGroups ()) {
-                taskContext.broadcastForGroup (group);
+                taskContext.broadcastTaskForGroup (group);
             }
         } catch (TelegramApiException tapie) {
             log.error ("Failed to send message", tapie);
@@ -296,7 +297,7 @@ public class CommonChatContext implements ChatContext {
         taskContext.setState (user, taskContext.isEnabled () ? TaskState.DISABLED : TaskState.ENABLED);
         
         for (final var group : taskContext.getGroups ()) {
-            taskContext.broadcastUpdateForGroup (group, taskContext.isEnabled ());
+            taskContext.broadcastTaskUpdateForGroup (group, taskContext.isEnabled ());
         }
     }
     
@@ -319,11 +320,28 @@ public class CommonChatContext implements ChatContext {
         final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
         parsedQuery.setEvent (event);
         
-        final var includeGroups = parsedQuery.getGroupsSplit ().a;
+        final var includeGroups = parsedQuery.getIncludeGroups ();
         taskContext.setTask (task).setType (type).setGroups (includeGroups);
         
         for (final var group : taskContext.getGroups ()) {
-            taskContext.broadcastUpdateForGroup (group, true);
+            taskContext.broadcastTaskUpdateForGroup (group, true);
+        }
+    }
+    
+    private void pingTask (UserContext user, String query) throws CommandProcessingException {
+        final var parsedQuery = InlineQueryProcessor.parseQuery (query);
+        TaskCommandValidator.checkError (parsedQuery);
+        TaskCommandValidator.checkId (parsedQuery);
+        
+        final var id = parsedQuery.getId ();
+        final var taskContext = taskContextService.findContext (id);
+        if (taskContext == null) {
+            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nЗадача не найдена");
+        }
+        
+        final var message = "‼️ Задача #tid%s требует вашего внимания. Проверьте, что ответ группы, в которой вы состоите, актуален".formatted (id);
+        for (final var group : parsedQuery.getIncludeGroups ()) {
+            taskContext.broadcastTextMessageForGroup (group, message);
         }
     }
     

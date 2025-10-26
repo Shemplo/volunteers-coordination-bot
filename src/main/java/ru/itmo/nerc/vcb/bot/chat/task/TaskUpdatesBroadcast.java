@@ -84,7 +84,7 @@ public class TaskUpdatesBroadcast implements SupervisedRunnable {
             }
             
             if (taskEdited) {
-                final var messageThatEdited = "‼️ Задача #tid" + task.getId () + " была изменена. Проверьте, что ответ группы, в которой вы состоите, актуален и соответствует изменению";
+                final var messageThatEdited = "‼️ Задача #tid%d была изменена. Проверьте, что ответ группы, в которой вы состоите, актуален и соответствует изменению".formatted (task.getId ());
                 if (statusMessage == null) {
                     bot.sendMessage (chatId, cfg -> {
                         cfg.text (messageThatEdited);
