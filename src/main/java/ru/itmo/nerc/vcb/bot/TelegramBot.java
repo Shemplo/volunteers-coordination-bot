@@ -28,7 +28,7 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
-import ru.itmo.nerc.vcb.bot.chat.ChatContextService;
+import ru.itmo.nerc.vcb.bot.chat.service.ChatContextService;
 import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
 import ru.itmo.nerc.vcb.utils.thread.ThreadsPool;
 
@@ -88,27 +88,15 @@ public class TelegramBot implements LongPollingSingleThreadUpdateConsumer {
     @Getter
     private final TelegramClient telegramClient;
     
-    /*
-    private TelegramBot (DefaultBotOptions options) {
-        super (options, ConfigurationHolder.getConfigurationFromSingleton ().getCredentials ().getToken ());
-        
-        // It's a daemon that will be destroyed with main thread
-        new ThreadsPool (1, 32, "iq-processor-", () -> inlineQueryProcessor);
-    }
-    */
+    @SuppressWarnings ("unused")
+    private final ThreadsPool threadsPool;
     
     public TelegramBot (TelegramClient telegramClient) {
         this.telegramClient = telegramClient;
         
-        new ThreadsPool (1, 32, "iq-processor-", () -> inlineQueryProcessor);
+        // TODO Shutdown it gracefully (but actually it's a daemon)
+        threadsPool = new ThreadsPool (1, 32, "iq-processor-", () -> inlineQueryProcessor);
     }
-    
-    /*
-    @Override
-    public String getBotUsername () {
-        return ConfigurationHolder.getConfigurationFromSingleton ().getCredentials ().getBotName ();
-    }
-    */
     
     @Override
     public void consume (Update update) {

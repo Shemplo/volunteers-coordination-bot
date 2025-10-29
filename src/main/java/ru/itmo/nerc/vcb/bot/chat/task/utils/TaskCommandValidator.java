@@ -1,8 +1,9 @@
-package ru.itmo.nerc.vcb.bot.chat.task;
+package ru.itmo.nerc.vcb.bot.chat.task.utils;
 
 import lombok.experimental.UtilityClass;
 import ru.itmo.nerc.vcb.bot.InlineQueryProcessor.ParsedQuery;
-import ru.itmo.nerc.vcb.bot.chat.CommandProcessingException;
+import ru.itmo.nerc.vcb.bot.chat.ex.CommandProcessingException;
+import ru.itmo.nerc.vcb.bot.chat.task.TaskContext;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 
 @UtilityClass

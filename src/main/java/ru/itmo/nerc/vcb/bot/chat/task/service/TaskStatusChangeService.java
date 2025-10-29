@@ -1,4 +1,4 @@
-package ru.itmo.nerc.vcb.bot.chat.task;
+package ru.itmo.nerc.vcb.bot.chat.task.service;
 
 import java.util.Date;
 
@@ -7,6 +7,8 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import ru.itmo.nerc.vcb.bot.chat.task.TaskContext;
+import ru.itmo.nerc.vcb.bot.chat.task.TaskStatusChange;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 import ru.itmo.nerc.vcb.db.DatabaseService;
 

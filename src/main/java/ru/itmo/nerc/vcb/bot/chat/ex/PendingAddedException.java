@@ -1,4 +1,4 @@
-package ru.itmo.nerc.vcb.bot.chat;
+package ru.itmo.nerc.vcb.bot.chat.ex;
 
 import ru.itmo.nerc.vcb.bot.chat.pending.ChatPending;
 

@@ -1,4 +1,4 @@
-package ru.itmo.nerc.vcb.bot.chat;
+package ru.itmo.nerc.vcb.bot.chat.service;
 
 import java.util.ArrayList;
 import java.util.Base64;
@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import ru.itmo.nerc.vcb.bot.chat.ChatMetaInformation;
 import ru.itmo.nerc.vcb.db.DatabaseService;
 
 @Slf4j

@@ -12,8 +12,8 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import lombok.Getter;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
 import ru.itmo.nerc.vcb.bot.chat.ChatContext;
-import ru.itmo.nerc.vcb.bot.chat.CommandProcessingException;
 import ru.itmo.nerc.vcb.bot.chat.CommonChatContext;
+import ru.itmo.nerc.vcb.bot.chat.ex.CommandProcessingException;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
 

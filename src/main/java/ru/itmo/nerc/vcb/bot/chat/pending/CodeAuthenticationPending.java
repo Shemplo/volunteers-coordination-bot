@@ -7,8 +7,8 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
 import ru.itmo.nerc.vcb.bot.chat.ChatContext;
-import ru.itmo.nerc.vcb.bot.chat.CommandProcessingException;
 import ru.itmo.nerc.vcb.bot.chat.UserChatContext;
+import ru.itmo.nerc.vcb.bot.chat.ex.CommandProcessingException;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 
 @Slf4j

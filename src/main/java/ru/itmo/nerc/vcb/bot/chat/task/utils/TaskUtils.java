@@ -1,4 +1,4 @@
-package ru.itmo.nerc.vcb.bot.chat.task;
+package ru.itmo.nerc.vcb.bot.chat.task.utils;
 
 import java.util.ArrayList;
 import java.util.HashSet;

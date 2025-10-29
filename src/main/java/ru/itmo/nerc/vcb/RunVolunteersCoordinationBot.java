@@ -13,6 +13,7 @@ import ru.itmo.nerc.vcb.db.DatabaseService;
 @Slf4j
 public class RunVolunteersCoordinationBot {
     
+    @SuppressWarnings ("resource")
     public static void main (String ... args) {
         try {
             DatabaseService.getInstance ();
@@ -28,7 +29,6 @@ public class RunVolunteersCoordinationBot {
         final var botToken = configuration.getCredentials ().getToken ();
         
         try {
-            @SuppressWarnings ("resource")
             final var application = new TelegramBotsLongPollingApplication ();
             application.registerBot (botToken, TelegramBot.getInstance ());
             

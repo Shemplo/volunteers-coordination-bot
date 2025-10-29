@@ -21,15 +21,20 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.InlineQueryProcessor;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
+import ru.itmo.nerc.vcb.bot.chat.ex.CommandProcessingException;
+import ru.itmo.nerc.vcb.bot.chat.ex.PendingAddedException;
 import ru.itmo.nerc.vcb.bot.chat.pending.ChatPending;
 import ru.itmo.nerc.vcb.bot.chat.pending.ChooseSubscriptionGroupPending;
 import ru.itmo.nerc.vcb.bot.chat.pending.CodeAuthenticationPending;
 import ru.itmo.nerc.vcb.bot.chat.pending.DelayedCommandProcessingPending;
-import ru.itmo.nerc.vcb.bot.chat.task.TaskCommandValidator;
+import ru.itmo.nerc.vcb.bot.chat.service.ChatContextService;
+import ru.itmo.nerc.vcb.bot.chat.service.ChatMetaInformationService;
 import ru.itmo.nerc.vcb.bot.chat.task.TaskContext;
-import ru.itmo.nerc.vcb.bot.chat.task.TaskContextService;
 import ru.itmo.nerc.vcb.bot.chat.task.TaskState;
-import ru.itmo.nerc.vcb.bot.chat.task.TaskStatusChangeService;
+import ru.itmo.nerc.vcb.bot.chat.task.service.TaskContextService;
+import ru.itmo.nerc.vcb.bot.chat.task.service.TaskStatusChangeService;
+import ru.itmo.nerc.vcb.bot.chat.task.utils.TaskCommandValidator;
+import ru.itmo.nerc.vcb.bot.chat.utils.ChatUtils;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 import ru.itmo.nerc.vcb.bot.user.UserContextService;
 import ru.itmo.nerc.vcb.bot.user.UserRole;
@@ -168,7 +173,7 @@ public class CommonChatContext implements ChatContext {
             case "/writemeta" -> checkAndCall (user, UserRole.PARTICIPANT, () -> writeMetainformation (command.b));
             
             default -> TelegramBot.getInstance ().setReactionOnMessage (message, "🤷‍♂️");
-        };
+        }
     }
     
     protected void processCommandProcessingException (UserContext user, Message message, CommandProcessingException exception) throws TelegramApiException {

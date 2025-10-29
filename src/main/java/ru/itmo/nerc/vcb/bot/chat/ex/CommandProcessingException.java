@@ -1,4 +1,4 @@
-package ru.itmo.nerc.vcb.bot.chat;
+package ru.itmo.nerc.vcb.bot.chat.ex;
 
 
 public class CommandProcessingException extends Exception {

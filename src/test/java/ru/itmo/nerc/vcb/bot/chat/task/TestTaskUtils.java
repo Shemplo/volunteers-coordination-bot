@@ -8,6 +8,7 @@ import java.util.List;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import ru.itmo.nerc.vcb.bot.chat.task.utils.TaskUtils;
 import ru.itmo.nerc.vcb.cfg.BotEventConfiguration;
 import ru.itmo.nerc.vcb.cfg.BotEventConfiguration.EventGroup;
 

@@ -1,4 +1,4 @@
-package ru.itmo.nerc.vcb.bot.chat;
+package ru.itmo.nerc.vcb.bot.chat.service;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,6 +8,10 @@ import org.telegram.telegrambots.meta.api.objects.chat.Chat;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import ru.itmo.nerc.vcb.bot.chat.ChatContext;
+import ru.itmo.nerc.vcb.bot.chat.CommonChatContext;
+import ru.itmo.nerc.vcb.bot.chat.GroupChatContext;
+import ru.itmo.nerc.vcb.bot.chat.UserChatContext;
 
 @Slf4j
 @NoArgsConstructor (access = AccessLevel.PRIVATE)

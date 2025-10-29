@@ -5,7 +5,7 @@ import java.io.Serializable;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import ru.itmo.nerc.vcb.bot.chat.CommandProcessingException;
+import ru.itmo.nerc.vcb.bot.chat.ex.CommandProcessingException;
 
 public interface ChatPending extends Serializable {
     

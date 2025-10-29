@@ -1,28 +1,32 @@
-package ru.itmo.nerc.vcb.bot.chat.task;
+package ru.itmo.nerc.vcb.bot.chat.service;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Consumer;
 
 import org.apache.commons.lang3.function.FailableRunnable;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
+import ru.itmo.nerc.vcb.bot.chat.task.TaskContext;
+import ru.itmo.nerc.vcb.bot.chat.task.service.TaskStatusMessageService;
 import ru.itmo.nerc.vcb.utils.thread.RunnableActivity;
 import ru.itmo.nerc.vcb.utils.thread.SupervisedRunnable;
 import ru.itmo.nerc.vcb.utils.thread.ThreadsPool;
 
 @Slf4j
-public class TaskUpdatesBroadcast implements SupervisedRunnable {
+public class ChatsBroadcaster implements SupervisedRunnable {
     
-    private static volatile TaskUpdatesBroadcast instance;
+    private static volatile ChatsBroadcaster instance;
     
-    public static TaskUpdatesBroadcast getInstance () {
+    public static ChatsBroadcaster getInstance () {
         if (instance == null) {
-            synchronized (TaskUpdatesBroadcast.class) {
+            synchronized (ChatsBroadcaster.class) {
                 if (instance == null) {
-                    instance = new TaskUpdatesBroadcast ();
+                    instance = new ChatsBroadcaster ();
                 }
             }
         }
@@ -33,8 +37,12 @@ public class TaskUpdatesBroadcast implements SupervisedRunnable {
     private final Queue <FailableRunnable <TelegramApiException>> tasksQueue = new ConcurrentLinkedQueue <> ();
     private final TaskStatusMessageService taskStatusMessageService = TaskStatusMessageService.getInstance ();
     
-    private TaskUpdatesBroadcast () {
-        new ThreadsPool (1, 32, "tu-broadcast-", () -> this);
+    @SuppressWarnings ("unused")
+    private final ThreadsPool threadsPool;
+    
+    private ChatsBroadcaster () {
+        // TODO Shutdown it gracefully (but actually it's a daemon)
+        threadsPool = new ThreadsPool (1, 32, "chats-broadcaster-", () -> this);
     }
     
     @Override
@@ -60,6 +68,18 @@ public class TaskUpdatesBroadcast implements SupervisedRunnable {
         return tasksQueue.isEmpty () ? RunnableActivity.IDLE: RunnableActivity.RUNNING;
     }
     
+    public void sendMessage (long chatId, String text, InlineKeyboardMarkup keyboard, Consumer <Message> onMessageSent) {
+    	tasksQueue.add (() -> {
+            final var message = TelegramBot.getInstance ().sendMessage (chatId, cfg -> {
+                cfg.replyMarkup (keyboard);
+                cfg.text (text);
+            });
+            
+            onMessageSent.accept(message);
+        });
+    }
+    
+    @Deprecated
     public void sendBroadcastMessage (TaskContext task, long chatId, String text, InlineKeyboardMarkup keyboard) {
         tasksQueue.add (() -> {
             final var message = TelegramBot.getInstance ().sendMessage (chatId, cfg -> {
@@ -71,6 +91,7 @@ public class TaskUpdatesBroadcast implements SupervisedRunnable {
         });
     }
     
+    @Deprecated
     public void sendBroadcastUpdate (TaskContext task, boolean taskEdited, long chatId, String text, InlineKeyboardMarkup keyboard) {
         tasksQueue.add (() -> {
             final var statusMessage = TaskStatusMessageService.getInstance ().findByTaskAndChat (task.getId (), chatId);

@@ -13,8 +13,6 @@ import java.util.StringJoiner;
 import org.apache.commons.lang3.function.FailableBiConsumer;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.Getter;
@@ -23,7 +21,11 @@ import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.InlineQueryProcessor.ParsedQuery;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
 import ru.itmo.nerc.vcb.bot.chat.ChatMetaInformation;
-import ru.itmo.nerc.vcb.bot.chat.ChatMetaInformationService;
+import ru.itmo.nerc.vcb.bot.chat.service.ChatMetaInformationService;
+import ru.itmo.nerc.vcb.bot.chat.service.ChatsBroadcaster;
+import ru.itmo.nerc.vcb.bot.chat.task.service.TaskStatusChangeService;
+import ru.itmo.nerc.vcb.bot.chat.task.utils.TaskKeyboardFormer;
+import ru.itmo.nerc.vcb.bot.chat.task.utils.TaskUtils;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 import ru.itmo.nerc.vcb.bot.user.UserContextService;
 import ru.itmo.nerc.vcb.cfg.BotEventConfiguration;
@@ -237,7 +239,7 @@ public class TaskContext {
     
     public void broadcastTextMessageForGroup (String group, String text) {
         log.info ("Sending broadcast text message to `{}` group...:\n{}", group, text);
-        final var taskUpdatesBroadcast = TaskUpdatesBroadcast.getInstance ();
+        final var taskUpdatesBroadcast = ChatsBroadcaster.getInstance ();
         final var userContextService = UserContextService.getInstance ();
         
         for (final var member : userContextService.findGroupMembers (group)) {
@@ -254,7 +256,7 @@ public class TaskContext {
         log.info ("Sending broadcast message to `{}` group...", group);
         
         try {
-            final var taskUpdatesBroadcast = TaskUpdatesBroadcast.getInstance ();
+            final var taskUpdatesBroadcast = ChatsBroadcaster.getInstance ();
             final var userContextService = UserContextService.getInstance ();
             
             prepareGroupMessage (group, (text, keyboard) -> {
@@ -276,7 +278,7 @@ public class TaskContext {
         log.info ("Sending broadcast message update to `{}` group...", group);
         
         try {
-            final var taskUpdatesBroadcast = TaskUpdatesBroadcast.getInstance ();
+            final var taskUpdatesBroadcast = ChatsBroadcaster.getInstance ();
             final var userContextService = UserContextService.getInstance ();
             
             prepareGroupMessage (group, (text, keyboard) -> {
@@ -308,7 +310,7 @@ public class TaskContext {
         appendGroupStatus (sj, group, event);
         appendStateInformation (sj);
         
-        doOnReady.accept (sj.toString (), prepareMarkup (false, List.of ()));
+        doOnReady.accept (sj.toString (), TaskKeyboardFormer.makeKeyboard (this, false, List.of ()));
     }
     
     public void updateMessage () {
@@ -335,7 +337,7 @@ public class TaskContext {
             
             appendStateInformation (sj);
             
-            final var markup = prepareMarkup (true, groupsWithStatus);
+            final var markup = TaskKeyboardFormer.makeKeyboard (this, true, groupsWithStatus);
             
             TelegramBot.getInstance ().sendMessageEdit (chatId, messageId, cfg -> {
                 cfg.text (sj.toString ());
@@ -392,99 +394,6 @@ public class TaskContext {
                 sj.add ("⏯️ Задача приостановлена");
             }
         }
-    }
-    
-    private InlineKeyboardMarkup prepareMarkup (boolean forSourceMessage, List <TaskStatusChange> groupsWithStatus) {
-        final var markup = new InlineKeyboardMarkup (new ArrayList <> ());
-        
-        if (isEnabled ()) {
-            if (isCheck ()) {
-                final var processRow = new InlineKeyboardRow ();
-                markup.getKeyboard ().add (processRow);
-                
-                processRow.add (makeDoneAnswer ());
-            } else if (isQuestion ()) {
-                final var commentRow = new InlineKeyboardRow ();
-                markup.getKeyboard ().add (commentRow);
-                
-                commentRow.add (makeFreeFormAnswer ());
-            } else if (isTask ()) {
-                final var processRow = new InlineKeyboardRow ();
-                markup.getKeyboard ().add (processRow);
-                
-                processRow.add (makeInProgressAnswer ());
-                processRow.add (makeDoneAnswer ());
-                
-                final var commentRow = new InlineKeyboardRow ();
-                markup.getKeyboard ().add (commentRow);
-                
-                commentRow.add (makeFreeFormAnswer ());
-            }
-        }
-        
-        if (forSourceMessage) {
-            final var editorRow = new InlineKeyboardRow ();
-            markup.getKeyboard ().add (editorRow);
-            
-            editorRow.add (InlineKeyboardButton.builder ()
-                .text ("📝 Изменить")
-                .switchInlineQueryCurrentChat ("id " + id + "; task " + task + "; groups " + String.join (", ", groups))
-                .build ());
-            editorRow.add (InlineKeyboardButton.builder ()
-                .text (isEnabled () ? "⏯️ Приостановить" : "▶️ Запустить")
-                .callbackData ("/activationtask id " + id)
-                .build ());
-            
-            final var pingRow = new InlineKeyboardRow ();
-            markup.getKeyboard ().add (pingRow);
-            
-            for (final var group : groups) {
-                pingRow.add (InlineKeyboardButton.builder ()
-                    .text ("!" + group)
-                    .callbackData ("/pingtask id " + id + "; groups " + group)
-                    .build ());
-            }
-            
-            if (!groupsWithStatus.isEmpty ()) {
-                final var userContextService = UserContextService.getInstance ();
-                
-                final var replyRow = new InlineKeyboardRow ();
-                markup.getKeyboard ().add (replyRow);
-                
-                for (final var status : groupsWithStatus) {
-                    final var changeAuthor = userContextService.findContextForExistingUser (status.getAuthorId ());
-                    replyRow.add (InlineKeyboardButton.builder ()
-                        .text (status.getGroup ())
-                        .switchInlineQueryCurrentChat ("@" + changeAuthor.getUsername () + ", вопрос по задаче #tid" + id + "\n")
-                        .build ());
-                }
-            }
-        }
-        
-        return markup;
-    }
-    
-    private InlineKeyboardButton makeDoneAnswer () {
-        final var doneText = "✅ Выполнили";
-        return InlineKeyboardButton.builder ()
-            .text (doneText)
-            .callbackData ("/answertask id " + id + "; answer " + doneText)
-            .build ();
-    }
-    
-    private InlineKeyboardButton makeInProgressAnswer () {
-        final var doneText = "💃 В процессе";
-        return InlineKeyboardButton.builder ()
-            .text (doneText)
-            .callbackData ("/answertask id " + id + "; answer " + doneText)
-            .build ();
-    }
-    
-    private InlineKeyboardButton makeFreeFormAnswer () {
-        return InlineKeyboardButton.builder ()
-            .text ("💭 Ответить в свободной форме")
-            .switchInlineQueryCurrentChat ("id " + id + "; answer\n")
-            .build ();
     }
     
     public static StringJoiner prepareShortTaskMessage (UserContext user, String task, String type) {

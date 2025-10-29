@@ -1,4 +1,4 @@
-package ru.itmo.nerc.vcb.bot.chat.task;
+package ru.itmo.nerc.vcb.bot.chat.task.service;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,6 +8,8 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import ru.itmo.nerc.vcb.bot.chat.task.TaskContext;
+import ru.itmo.nerc.vcb.bot.chat.task.TaskStatusMessage;
 import ru.itmo.nerc.vcb.db.DatabaseService;
 
 @Slf4j

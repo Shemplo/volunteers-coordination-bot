@@ -6,6 +6,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
+import ru.itmo.nerc.vcb.bot.chat.ex.CommandProcessingException;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 
 @Slf4j

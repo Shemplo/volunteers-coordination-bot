@@ -13,8 +13,11 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
+import ru.itmo.nerc.vcb.bot.chat.ex.CommandProcessingException;
+import ru.itmo.nerc.vcb.bot.chat.ex.PendingAddedException;
 import ru.itmo.nerc.vcb.bot.chat.pending.CodeAuthenticationPending;
 import ru.itmo.nerc.vcb.bot.chat.task.TaskContext;
+import ru.itmo.nerc.vcb.bot.chat.utils.ChatUtils;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 import ru.itmo.nerc.vcb.bot.user.UserRole;
 import ru.itmo.nerc.vcb.cfg.BotEventConfiguration.EventGroup;
@@ -65,7 +68,7 @@ public class UserChatContext extends CommonChatContext {
             case "/groupsclear" -> checkAndCall (user, UserRole.MODERATOR, this::clearGroups);
             
             default -> super.processCommand (user, message, command);
-        };
+        }
     }
     
     public void authenticateUser (UserContext user, Message message, String code) throws CommandProcessingException {
@@ -99,7 +102,7 @@ public class UserChatContext extends CommonChatContext {
         throw new CommandProcessingException ("Неправильный код. Попробуйте ещё раз 😢");
     }
     
-    private void printHelp (UserContext user) throws CommandProcessingException {
+    private void printHelp (UserContext user) {
         final var sj = new StringJoiner ("\n");
         sj.add ("<b>Базовые команды:</b>");
         sj.add ("");

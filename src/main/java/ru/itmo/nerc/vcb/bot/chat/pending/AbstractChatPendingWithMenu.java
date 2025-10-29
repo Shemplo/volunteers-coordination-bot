@@ -4,7 +4,7 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import ru.itmo.nerc.vcb.bot.chat.ChatContext;
-import ru.itmo.nerc.vcb.bot.chat.ChatUtils;
+import ru.itmo.nerc.vcb.bot.chat.utils.ChatUtils;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 
 public abstract class AbstractChatPendingWithMenu extends AbstractChatPending {

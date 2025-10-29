@@ -25,11 +25,7 @@ public class DatabaseService {
                     instance = new DatabaseService ();
                     
                     // This is hack only for boot time
-                    try {
-                        instance.initialize ();
-                    } catch (SQLException sqle) {
-                        throw new RuntimeException (sqle);
-                    }
+                    instance.initialize ();
                 }
             }
         }
@@ -37,7 +33,8 @@ public class DatabaseService {
         return instance;
     }
     
-    private void initialize () throws SQLException {
+    @SuppressWarnings ("resource")
+    private void initialize () {
         doWrapped (connection -> {
             // User
             connection.prepareStatement ("""

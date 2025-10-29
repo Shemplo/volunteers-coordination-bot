@@ -1,4 +1,4 @@
-package ru.itmo.nerc.vcb.bot.chat;
+package ru.itmo.nerc.vcb.bot.chat.utils;
 
 import java.util.ArrayList;
 import java.util.LinkedList;

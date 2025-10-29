@@ -5,6 +5,7 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import ru.itmo.nerc.vcb.bot.TelegramChildBot;
+import ru.itmo.nerc.vcb.bot.chat.ex.CommandProcessingException;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 
 public interface ChatContext extends TelegramChildBot {
