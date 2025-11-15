@@ -37,10 +37,13 @@ import ru.itmo.nerc.vcb.db.DateUtils;
 @Getter
 @ToString
 public class TaskContext {
- 
+    
     public static final String TYPE_CHECK = "check";
     public static final String TYPE_QUESTION = "question";
     public static final String TYPE_TASK = "task";
+    
+    public static final String STATE_DONE = "✅ Выполнили";
+    public static final String STATE_IN_PROCESS = "💃 В процессе";
     
     private final long id;
     
@@ -236,6 +239,10 @@ public class TaskContext {
         
         return this;
     }
+    
+    
+    
+    //
     
     public void broadcastTextMessageForGroup (String group, String text) {
         log.info ("Sending broadcast text message to `{}` group...:\n{}", group, text);

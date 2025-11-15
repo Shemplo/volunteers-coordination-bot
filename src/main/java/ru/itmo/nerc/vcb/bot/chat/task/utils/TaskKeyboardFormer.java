@@ -84,18 +84,16 @@ public class TaskKeyboardFormer {
     }
 	
 	private static InlineKeyboardButton makeDoneAnswer (TaskContext task) {
-        final var doneText = "✅ Выполнили";
         return InlineKeyboardButton.builder ()
-             . text (doneText)
-			 . callbackData("/answertask id %d; answer %s".formatted(task.getId(), doneText))
+             . text (TaskContext.STATE_DONE)
+             . callbackData ("/answertask id %d; answer %s".formatted (task.getId (), TaskContext.STATE_DONE))
              . build ();
     }
     
     private static InlineKeyboardButton makeInProgressAnswer (TaskContext task) {
-        final var doneText = "💃 В процессе";
         return InlineKeyboardButton.builder ()
-             . text (doneText)
-			 . callbackData ("/answertask id %d; answer %s".formatted (task.getId (), doneText))
+             . text (TaskContext.STATE_IN_PROCESS)
+			 . callbackData ("/answertask id %d; answer %s".formatted (task.getId (), TaskContext.STATE_IN_PROCESS))
              . build ();
     }
     
