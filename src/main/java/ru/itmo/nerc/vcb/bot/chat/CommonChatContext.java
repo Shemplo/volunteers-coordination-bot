@@ -344,6 +344,9 @@ public class CommonChatContext implements ChatContext {
             throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nЗадача не найдена");
         }
         
+        final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
+        parsedQuery.setEvent (event);
+        
         final var message = "‼️ Задача #tid%s требует вашего внимания. Проверьте, что ответ группы, в которой вы состоите, актуален".formatted (id);
         for (final var group : parsedQuery.getIncludeGroups ()) {
             taskContext.broadcastTextMessageForGroup (group, message);
