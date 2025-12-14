@@ -337,7 +337,10 @@ public class CommonChatContext implements ChatContext {
         final var parsedQuery = InlineQueryProcessor.parseQuery (query);
         TaskCommandValidator.checkError (parsedQuery);
         TaskCommandValidator.checkId (parsedQuery);
-        
+
+        final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
+        parsedQuery.setEvent (event);
+
         final var id = parsedQuery.getId ();
         final var taskContext = taskContextService.findContext (id);
         if (taskContext == null) {
