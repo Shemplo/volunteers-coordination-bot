@@ -44,7 +44,11 @@ public class TaskContext {
     
     public static final String STATE_DONE = "✅ Выполнили";
     public static final String STATE_IN_PROCESS = "💃 В процессе";
-    
+
+    public static final String STATE_CHECK_OK = "✅ OK";
+    public static final String STATE_CHECK_FAILED = "❌ Fail";
+    public static final String STATE_CHECK_IN_PROCESS = "💃 Wait";
+
     private final long id;
     
     // Effectively final
@@ -191,6 +195,10 @@ public class TaskContext {
         return state == TaskState.DISABLED;
     }
     
+    public boolean isCancelled () {
+        return state == TaskState.CANCELLED;
+    }
+
     public TaskContext setState (UserContext editor, TaskState state) {
         if (this.state != state && state != null) {
             this.state = state;
@@ -360,15 +368,24 @@ public class TaskContext {
         final var userContextService = UserContextService.getInstance ();
         
         final var eventGroup = event.findGroupByName (group);
-        sj.add ("");
-        
+
         final var status = taskStatusChangeService.findMostRecent (id, eventGroup.getShortName ());
         //log.debug ("Most recent status change for {} task and {} group : {}", id, group, status);
-        
+
+        if (!isCheck()) {
+            sj.add ("");
+        }
+
         if (status == null) {
             sj.add ("<i><u>" + eventGroup.getDisplayName () + ":</u></i> 🙈 Не заметили задание");
         } else if (isCheck ()) {
-            sj.add ("[Not implemented for check tasks yet]");
+            final var changeAuthor = userContextService.findContextForExistingUser (status.getAuthorId ());
+
+            sj.add (
+                    "<i><u>" + eventGroup.getDisplayName () + ":</u></i> "
+                            + status.getContent () + " @" + changeAuthor.getUsername ()
+                            + " в " + DateUtils.dateFormatShort.format (status.getChangeDate ())
+            );
         } else if (isQuestion ()) {
             final var changeAuthor = userContextService.findContextForExistingUser (status.getAuthorId ());
             

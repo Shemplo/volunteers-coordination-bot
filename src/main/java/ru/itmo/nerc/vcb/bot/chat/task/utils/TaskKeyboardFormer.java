@@ -20,8 +20,10 @@ public class TaskKeyboardFormer {
             if (task.isCheck ()) {
                 final var processRow = new InlineKeyboardRow ();
                 markup.getKeyboard ().add (processRow);
-                
-                processRow.add (makeDoneAnswer (task));
+
+                processRow.add (makeAnswer (task, TaskContext.STATE_CHECK_IN_PROCESS));
+                processRow.add (makeAnswer (task, TaskContext.STATE_CHECK_OK));
+                processRow.add (makeAnswer (task, TaskContext.STATE_CHECK_FAILED));
             } else if (task.isQuestion ()) {
                 final var commentRow = new InlineKeyboardRow ();
                 markup.getKeyboard ().add (commentRow);
@@ -84,19 +86,21 @@ public class TaskKeyboardFormer {
     }
 	
 	private static InlineKeyboardButton makeDoneAnswer (TaskContext task) {
-        return InlineKeyboardButton.builder ()
-             . text (TaskContext.STATE_DONE)
-             . callbackData ("/answertask id %d; answer %s".formatted (task.getId (), TaskContext.STATE_DONE))
-             . build ();
+        String stateDone = TaskContext.STATE_DONE;
+        return makeAnswer (task, stateDone);
     }
-    
+
     private static InlineKeyboardButton makeInProgressAnswer (TaskContext task) {
-        return InlineKeyboardButton.builder ()
-             . text (TaskContext.STATE_IN_PROCESS)
-			 . callbackData ("/answertask id %d; answer %s".formatted (task.getId (), TaskContext.STATE_IN_PROCESS))
-             . build ();
+        return makeAnswer (task, TaskContext.STATE_IN_PROCESS);
     }
-    
+
+    private static InlineKeyboardButton makeAnswer(TaskContext task, String stateDone) {
+        return InlineKeyboardButton.builder()
+                .text(stateDone)
+                .callbackData("/answertask id %d; answer %s".formatted(task.getId(), stateDone))
+                .build();
+    }
+
     private static InlineKeyboardButton makeFreeFormAnswer (TaskContext task) {
         return InlineKeyboardButton.builder ()
              . text ("💭 Ответить в свободной форме")

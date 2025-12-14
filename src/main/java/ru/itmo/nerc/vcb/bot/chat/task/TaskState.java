@@ -4,8 +4,9 @@ public enum TaskState {
     
     CREATED,
     ENABLED,
-    DISABLED
-    
+    DISABLED,
+    CANCELLED
+
     ;
     
     public static TaskState parseOrDefault (String name, TaskState def) {
