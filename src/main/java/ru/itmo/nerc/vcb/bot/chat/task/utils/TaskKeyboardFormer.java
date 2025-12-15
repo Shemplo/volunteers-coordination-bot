@@ -46,24 +46,40 @@ public class TaskKeyboardFormer {
         if (forSourceMessage) {
             final var editorRow = new InlineKeyboardRow ();
             markup.getKeyboard ().add (editorRow);
-            
-            editorRow.add (InlineKeyboardButton.builder ()
-                .text ("📝 Изменить")
-                .switchInlineQueryCurrentChat ("id %d; task %s; groups %s".formatted (task.getId (), task.getTask(), String.join (", ", task.getGroups())))
-                .build ());
-            editorRow.add (InlineKeyboardButton.builder ()
-                .text (task.isEnabled () ? "⏯️ Приостановить" : "▶️ Запустить")
-                .callbackData ("/activationtask id " + task.getId())
-                .build ());
-            
-            final var pingRow = new InlineKeyboardRow ();
-            markup.getKeyboard ().add (pingRow);
-            
-            for (final var group : task.getGroups()) {
-                pingRow.add (InlineKeyboardButton.builder ()
-                    .text ("!" + group)
-                    .callbackData ("/pingtask id %d; groups %s".formatted (task.getId(), group))
-                    .build ());
+
+            if (!task.isCancelled()) {
+                if (!task.isFinalized()) {
+                    editorRow.add(InlineKeyboardButton.builder()
+                            .text("📝 Изменить")
+                            .switchInlineQueryCurrentChat("id %d; task %s; groups %s".formatted(task.getId(), task.getTask(), String.join(", ", task.getGroups())))
+                            .build());
+                    editorRow.add(InlineKeyboardButton.builder()
+                            .text(task.isEnabled() ? "⏯️ Приостановить" : "▶️ Запустить")
+                            .callbackData("/activationtask id " + task.getId())
+                            .build());
+                }
+                editorRow.add(InlineKeyboardButton.builder()
+                        .text(task.isFinalized() ? "️↪\uFE0F Перезапустить" : "\uD83D\uDC4C Завершить")
+                        .callbackData("/finallizationtask id " + task.getId())
+                        .build());
+            }
+            if (!task.isFinalized()) {
+                editorRow.add(InlineKeyboardButton.builder()
+                        .text(task.isCancelled() ? "▶️ Восстановить" : "❌ Отменить")
+                        .callbackData("/cancellationtask id " + task.getId())
+                        .build());
+            }
+
+            if (task.isEnabled()) {
+                final var pingRow = new InlineKeyboardRow();
+                markup.getKeyboard().add(pingRow);
+
+                for (final var group : task.getGroups()) {
+                    pingRow.add(InlineKeyboardButton.builder()
+                            .text("!" + group)
+                            .callbackData("/pingtask id %d; groups %s".formatted(task.getId(), group))
+                            .build());
+                }
             }
             
             if (!groupsWithStatus.isEmpty ()) {

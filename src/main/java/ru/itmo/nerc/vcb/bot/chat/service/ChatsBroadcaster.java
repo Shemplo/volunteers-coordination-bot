@@ -103,9 +103,14 @@ public class ChatsBroadcaster implements SupervisedRunnable {
                     cfg.text (text);
                 });
             }
-            
-            if (taskEdited) {
-                final var messageThatEdited = "‼️ Задача #tid%d была изменена. Проверьте, что ответ группы, в которой вы состоите, актуален и соответствует изменению".formatted (task.getId ());
+
+            if (taskEdited || task.isCancelled()) {
+                final String messageThatEdited;
+                if (task.isCancelled()) {
+                    messageThatEdited = "‼️ Задача #tid%d была отменена. Остановитесь".formatted(task.getId());
+                } else {
+                    messageThatEdited = "‼️ Задача #tid%d была изменена. Проверьте, что ответ группы, в которой вы состоите, актуален и соответствует изменению".formatted(task.getId());
+                }
                 if (statusMessage == null) {
                     bot.sendMessage (chatId, cfg -> {
                         cfg.text (messageThatEdited);

@@ -190,13 +190,24 @@ public class TaskContext {
     public boolean isEnabled () {
         return state == TaskState.CREATED || state == TaskState.ENABLED;
     }
-    
+
+    /**
+     * @return true if task is actually active for PARTICIPANT's
+     */
+    public boolean isAnswerable () {
+        return  state != TaskState.FINALIZED;
+    }
+
     public boolean isDisabled () {
         return state == TaskState.DISABLED;
     }
     
     public boolean isCancelled () {
         return state == TaskState.CANCELLED;
+    }
+
+    public boolean isFinalized() {
+        return state == TaskState.FINALIZED;
     }
 
     public TaskContext setState (UserContext editor, TaskState state) {
@@ -267,7 +278,7 @@ public class TaskContext {
         }
     }
     
-    public void broadcastTaskForGroup (String group) {
+    public void broadcastTaskForGroup (String group, TaskContext task) {
         log.info ("Sending broadcast message to `{}` group...", group);
         
         try {
@@ -316,15 +327,21 @@ public class TaskContext {
         
         final var event = ConfigurationHolder.getConfigurationFromSingleton ().getEvent ();
         final var author = userContextService.findContextForExistingUser (authorId);
-        
-        final var sj = prepareShortTaskMessage (author, task, type);
+
+        final var sj = prepareShortTaskMessage (author, this.task, type);
         sj.add ("#tasks #tid" + id);
-        
-        sj.add ("");
-        sj.add ("🕵️‍♂️ <b>Текущий статус задачи:</b>");
-        appendGroupStatus (sj, group, event);
-        appendStateInformation (sj);
-        
+
+        if (isCancelled()) {
+            sj.add("❌ Задача отменена");
+        } else if (isFinalized()) {
+            sj.add("\uD83C\uDFC6 Задача выполнена");
+        } else {
+            sj.add("");
+            sj.add("🕵️‍♂️ <b>Текущий статус задачи:</b>");
+            appendGroupStatus(sj, group, event);
+            appendStateInformation(sj);
+        }
+
         doOnReady.accept (sj.toString (), TaskKeyboardFormer.makeKeyboard (this, false, List.of ()));
     }
     
@@ -339,19 +356,25 @@ public class TaskContext {
             
             final var sj = prepareShortTaskMessage (author, task, type);
             sj.add ("#tasks #tid" + id);
-            
-            sj.add ("");
-            sj.add ("🕵️‍♂️ <b>Текущий статус задачи:</b>");
-            final var groupsWithStatus = new ArrayList <TaskStatusChange> ();
-            for (final var group : groups) {
-                final var status = appendGroupStatus (sj, group, event);
-                if (status != null) {
-                    groupsWithStatus.add (status);
+
+            final var groupsWithStatus = new ArrayList<TaskStatusChange>();
+            if (isCancelled()) {
+                sj.add("❌ Задача отменена");
+            } else if (isFinalized()) {
+                sj.add("\uD83C\uDFC6 Задача выполнена");
+            } else {
+                sj.add("");
+                sj.add("🕵️‍♂️ <b>Текущий статус задачи:</b>");
+                for (final var group : groups) {
+                    final var status = appendGroupStatus(sj, group, event);
+                    if (status != null) {
+                        groupsWithStatus.add(status);
+                    }
                 }
             }
-            
+
             appendStateInformation (sj);
-            
+
             final var markup = TaskKeyboardFormer.makeKeyboard (this, true, groupsWithStatus);
             
             TelegramBot.getInstance ().sendMessageEdit (chatId, messageId, cfg -> {
@@ -366,7 +389,7 @@ public class TaskContext {
     private TaskStatusChange appendGroupStatus (StringJoiner sj, String group, BotEventConfiguration event) {
         final var taskStatusChangeService = TaskStatusChangeService.getInstance ();
         final var userContextService = UserContextService.getInstance ();
-        
+
         final var eventGroup = event.findGroupByName (group);
 
         final var status = taskStatusChangeService.findMostRecent (id, eventGroup.getShortName ());
@@ -426,7 +449,7 @@ public class TaskContext {
         final var isCheck = TYPE_CHECK.equals (type);
         final var isQuestion = TYPE_QUESTION.equals (type);
         final var isTask = TYPE_TASK.equals (type);
-        
+
         if (isCheck) {
             sj.add ("‼️ <b>Новая проверка от</b> @" + user.getUsername () + " ‼️");
         } else if (isQuestion) {

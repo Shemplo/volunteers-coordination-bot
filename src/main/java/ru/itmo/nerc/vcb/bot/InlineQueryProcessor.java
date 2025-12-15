@@ -158,14 +158,15 @@ public class InlineQueryProcessor implements TelegramChildBot, SupervisedRunnabl
                         final var status = taskStatusChangeService.addNoticedChange (task, "👀 Заметили задание", user);
                         if (status != null) {
                             task.updateMessage ();
-                            task.broadcastTaskForGroup (user.getGroup ());
+                            task.broadcastTaskForGroup (user.getGroup (), task);
                         }
                     }
                     
                     if (task == null) {
                         options.add (prepareErrorResult ("Невозможно обновить статус задачи", "Указан неверный идентификатор (id)"));
-                    } else if (task.isDisabled ()) {
-                        options.add (prepareErrorResult ("Невозможно обновить статус задачи", "Задача приостановлена"));
+                    } else if (task.isDisabled () || task.isCancelled ()) {
+                        options.add (prepareErrorResult ("Невозможно обновить статус задачи",
+                                "Задача " + task.getState().getPresentation()));
                     } else if (parsedQuery.getAnswer ().length () == 0) {
                         options.add (prepareAnswerResult (parsedQuery.getId (), "Уже смотрим", EYES_ICON));
                         options.add (prepareAnswerResult (parsedQuery.getId (), "Нужна помощь ТК", NEED_HELP_ICON));

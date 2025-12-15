@@ -5,7 +5,8 @@ public enum TaskState {
     CREATED,
     ENABLED,
     DISABLED,
-    CANCELLED
+    CANCELLED,
+    FINALIZED
 
     ;
     
@@ -18,5 +19,14 @@ public enum TaskState {
         
         return def;
     }
-    
+
+
+    public String getPresentation() {
+        return switch (this) {
+            case ENABLED, CREATED -> "активна";
+            case DISABLED -> "приостановлена";
+            case CANCELLED -> "отменена";
+            case FINALIZED -> "завершена";
+        };
+    }
 }
