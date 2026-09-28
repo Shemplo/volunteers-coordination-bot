@@ -11,6 +11,11 @@ credentials:
 database:
     # Filename (path) of database
     filename: database-name.db
+# Proxy settings
+proxy:
+  host: 127.0.0.1
+  port: 10809
+  type: HTTP
 # Informtation that is displayed by /eventinfo command
 event:
     # Name of the event (displayed at the top)

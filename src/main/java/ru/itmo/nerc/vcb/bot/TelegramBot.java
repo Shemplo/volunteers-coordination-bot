@@ -27,9 +27,9 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.OkHttpClient;
 import ru.itmo.nerc.vcb.bot.chat.service.ChatContextService;
 import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
+import ru.itmo.nerc.vcb.client.HttpClientHolder;
 import ru.itmo.nerc.vcb.utils.thread.ThreadsPool;
 
 @Slf4j
@@ -41,38 +41,10 @@ public class TelegramBot implements LongPollingSingleThreadUpdateConsumer {
         if (instance == null) {
             synchronized (TelegramBot.class) {
                 if (instance == null) {
-                    /*
-                    final var options = new DefaultBotOptions ();
-                    options.setGetUpdatesTimeout (20);
-                    options.setGetUpdatesLimit (40);
-                    
                     final var configuration = ConfigurationHolder.getConfigurationFromSingleton ();
-                    final var proxy = configuration.getProxy ();
-                    
-                    if (proxy != null) {
-                        options.setProxyHost (proxy.getHost ());
-                        options.setProxyPort (proxy.getPort ());
-                        options.setProxyType (proxy.getType ());
-                        
-                        log.info ("{} proxy is set to {}:{}", proxy.getType (), proxy.getHost (), proxy.getPort ());
-                    } else {
-                        log.info ("No proxy will be used");
-                    }
-                    */
-                    
-                    //instance = new TelegramBot (options);
-                    
-                    final var configuration = ConfigurationHolder.getConfigurationFromSingleton ();
-                    final var proxy = configuration.getProxy ();
-                    
-                    final var clientBuilder = new OkHttpClient.Builder ();
-                    if (proxy != null) {
-                        final var proxyAddress = new InetSocketAddress (proxy.getHost (), proxy.getPort ());
-                        clientBuilder.proxy (new Proxy (proxy.getType (), proxyAddress));
-                    }
-                    
+
                     final var botToken = configuration.getCredentials ().getToken ();
-                    final var telegramClient = new OkHttpTelegramClient (clientBuilder.build (), botToken);
+                    final var telegramClient = new OkHttpTelegramClient (HttpClientHolder.getInstance (), botToken);
                     
                     instance = new TelegramBot (telegramClient);
                 }

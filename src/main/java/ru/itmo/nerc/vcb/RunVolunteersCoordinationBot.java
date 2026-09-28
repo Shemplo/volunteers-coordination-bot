@@ -2,12 +2,14 @@ package ru.itmo.nerc.vcb;
 
 import java.sql.SQLException;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
 import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
+import ru.itmo.nerc.vcb.client.HttpClientHolder;
 import ru.itmo.nerc.vcb.db.DatabaseService;
 
 @Slf4j
@@ -29,7 +31,7 @@ public class RunVolunteersCoordinationBot {
         final var botToken = configuration.getCredentials ().getToken ();
         
         try {
-            final var application = new TelegramBotsLongPollingApplication ();
+            final var application = new TelegramBotsLongPollingApplication (ObjectMapper::new, HttpClientHolder::getInstance);
             application.registerBot (botToken, TelegramBot.getInstance ());
             
             log.info ("Starting VC bot... DONE");
