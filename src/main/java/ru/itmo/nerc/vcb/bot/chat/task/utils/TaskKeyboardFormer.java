@@ -13,7 +13,7 @@ import ru.itmo.nerc.vcb.bot.user.UserContextService;
 
 public class TaskKeyboardFormer {
 
-	public static InlineKeyboardMarkup makeKeyboard (TaskContext task, boolean forSourceMessage, List <TaskStatusChange> groupsWithStatus) {
+	public static InlineKeyboardMarkup makeKeyboard (TaskContext task, boolean forSourceMessage, List <TaskStatusChange> groupsWithStatus, TaskStatusChange recentStatusChange) {
         final var markup = new InlineKeyboardMarkup (new ArrayList <> ());
         
         if (task.isEnabled ()) {
@@ -26,7 +26,7 @@ public class TaskKeyboardFormer {
                 final var commentRow = new InlineKeyboardRow ();
                 markup.getKeyboard ().add (commentRow);
                 
-                commentRow.add (makeFreeFormAnswer (task));
+                commentRow.add (makeFreeFormAnswer (task, recentStatusChange));
             } else if (task.isTask ()) {
                 final var processRow = new InlineKeyboardRow ();
                 markup.getKeyboard ().add (processRow);
@@ -37,7 +37,7 @@ public class TaskKeyboardFormer {
                 final var commentRow = new InlineKeyboardRow ();
                 markup.getKeyboard ().add (commentRow);
                 
-                commentRow.add (makeFreeFormAnswer (task));
+                commentRow.add (makeFreeFormAnswer (task, recentStatusChange));
             }
         }
         
@@ -97,10 +97,11 @@ public class TaskKeyboardFormer {
              . build ();
     }
     
-    private static InlineKeyboardButton makeFreeFormAnswer (TaskContext task) {
+    private static InlineKeyboardButton makeFreeFormAnswer (TaskContext task, TaskStatusChange recentStatusChange) {
+        var recentAnswer = recentStatusChange != null && recentStatusChange.getContent () != null ? recentStatusChange.getContent () : "";
         return InlineKeyboardButton.builder ()
              . text ("💭 Ответить в свободной форме")
-			 . switchInlineQueryCurrentChat ("id %d; answer\n".formatted (task.getId ()))
+			 . switchInlineQueryCurrentChat ("id %d; answer %s".formatted (task.getId (), recentAnswer))
              . build ();
     }
 	
