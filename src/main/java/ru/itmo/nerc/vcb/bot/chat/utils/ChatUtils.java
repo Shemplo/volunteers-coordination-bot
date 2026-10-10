@@ -17,60 +17,55 @@ import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
 
 @UtilityClass
 public class ChatUtils {
-    
-    public static Queue <Pair <String, String>> fetchCommand (Message message) {
-        if (!message.hasEntities ()) {
-            return new LinkedList <> ();
+
+    public static Queue<Pair<String, String>> fetchCommand(Message message) {
+        if (!message.hasEntities()) {
+            return new LinkedList<>();
         }
-        
-        final var configuration = ConfigurationHolder.getConfigurationFromSingleton ();
-        final var botUsername = "@" + configuration.getCredentials ().getBotName ();
-        
-        final var commands = new ArrayList <MessageEntity> ();
-        for (final var entity : message.getEntities ()) {
-            if ("bot_command".equals (entity.getType ())) {
-                if (entity.getText ().contains ("@") && entity.getText ().endsWith (botUsername)) {
-                    entity.setText (entity.getText ().substring (0, entity.getLength () - botUsername.length ()));
-                    commands.add (entity);
+
+        final var configuration = ConfigurationHolder.getConfigurationFromSingleton();
+        final var botUsername = "@" + configuration.getCredentials().getBotName();
+
+        final var commands = new ArrayList<MessageEntity>();
+        for (final var entity : message.getEntities()) {
+            if ("bot_command".equals(entity.getType())) {
+                if (entity.getText().contains("@") && entity.getText().endsWith(botUsername)) {
+                    entity.setText(entity.getText().substring(0, entity.getLength() - botUsername.length()));
+                    commands.add(entity);
                 } else {
-                    commands.add (entity);
+                    commands.add(entity);
                 }
             }
         }
-        
-        commands.add (new MessageEntity ("", message.getText ().length (), 0));
-        
-        final var parsed = new LinkedList <Pair <String, String>> ();
-        for (int i = 0; i < commands.size () - 1; i++) {
-            final var current = commands.get (i);
-            final var next = commands.get (i + 1);
-            
-            final var argument = message.getText ().substring (
-                current.getOffset () + current.getLength (),
-                next.getOffset ()
+
+        commands.add(new MessageEntity("", message.getText().length(), 0));
+
+        final var parsed = new LinkedList<Pair<String, String>>();
+        for (int i = 0; i < commands.size() - 1; i++) {
+            final var current = commands.get(i);
+            final var next = commands.get(i + 1);
+
+            final var argument = message.getText().substring(
+                    current.getOffset() + current.getLength(), next.getOffset()
             );
-            
-            parsed.add (new Pair <> (current.getText (), argument.trim ()));
+
+            parsed.add(new Pair<>(current.getText(), argument.trim()));
         }
-        
+
         return parsed;
     }
-    
-    public static SendMessage prepareHTML (long chatId, String content) {
-        return SendMessage.builder ()
-             . chatId (chatId)
-             . text (content)
-             . parseMode ("HTML")
-             . build ();
+
+    public static SendMessage prepareHTML(long chatId, String content) {
+        return SendMessage.builder().chatId(chatId).text(content).parseMode("HTML").build();
     }
-    
-    public static void hideInlineMarkup (long chatId, int messageId) throws TelegramApiException {
-        final var edit = new EditMessageReplyMarkup ();
-        edit.setMessageId (messageId);
-        edit.setChatId (chatId);
-        edit.setReplyMarkup (null);
-        
-        TelegramBot.getInstance ().getTelegramClient ().execute (edit);
+
+    public static void hideInlineMarkup(long chatId, int messageId) throws TelegramApiException {
+        final var edit = new EditMessageReplyMarkup();
+        edit.setMessageId(messageId);
+        edit.setChatId(chatId);
+        edit.setReplyMarkup(null);
+
+        TelegramBot.getInstance().getTelegramClient().execute(edit);
     }
-    
+
 }

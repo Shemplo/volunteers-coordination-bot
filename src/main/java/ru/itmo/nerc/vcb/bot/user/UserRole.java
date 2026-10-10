@@ -6,24 +6,21 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum UserRole {
-    
-    UNKNOWN ("Аноним"),
-    PARTICIPANT ("Волонтёр"),
-    MODERATOR ("Модератор"),
-    DEVELOPER ("Разработчик")
-    
+
+    UNKNOWN("Аноним"), PARTICIPANT("Волонтёр"), MODERATOR("Модератор"), DEVELOPER("Разработчик")
+
     ;
-    
-    public static UserRole parseOrDefault (String name, UserRole def) {
-        for (final var value : values ()) {
-            if (value.name ().equals (name)) {
+
+    public static UserRole parseOrDefault(String name, UserRole def) {
+        for (final var value : values()) {
+            if (value.name().equals(name)) {
                 return value;
             }
         }
-        
+
         return def;
     }
-    
+
     private final String displayName;
-    
+
 }
