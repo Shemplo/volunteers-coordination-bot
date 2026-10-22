@@ -312,10 +312,10 @@ public class TaskContext {
 
         sj.add("");
         sj.add("🕵️‍♂️ <b>Текущий статус задачи:</b>");
-        appendGroupStatus(sj, group, event);
+        var status = appendGroupStatus(sj, group, event);
         appendStateInformation(sj);
 
-        doOnReady.accept(sj.toString(), TaskKeyboardFormer.makeKeyboard(this, false, List.of()));
+        doOnReady.accept(sj.toString(), TaskKeyboardFormer.makeKeyboard(this, false, List.of(), status));
     }
 
     public void updateMessage() {
@@ -342,7 +342,7 @@ public class TaskContext {
 
             appendStateInformation(sj);
 
-            final var markup = TaskKeyboardFormer.makeKeyboard(this, true, groupsWithStatus);
+            final var markup = TaskKeyboardFormer.makeKeyboard(this, true, groupsWithStatus, null);
 
             TelegramBot.getInstance().sendMessageEdit(chatId, messageId, cfg -> {
                 cfg.text(sj.toString());
