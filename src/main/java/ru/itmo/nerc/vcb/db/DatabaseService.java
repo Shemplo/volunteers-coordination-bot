@@ -98,12 +98,6 @@ public class DatabaseService {
                             message_id INT NOT NULL
                         )
                     """).execute();
-            connection.prepareStatement("""
-                        CREATE UNIQUE INDEX IF NOT EXISTS unique_id ON task_status_message (task_id, chat_id)
-                    """).execute();
-            connection.prepareStatement("""
-                        CREATE UNIQUE INDEX IF NOT EXISTS fast_all_id ON task_status_message (task_id, chat_id, message_id)
-                    """).execute();
 
             // Meta information
             connection.prepareStatement("""
@@ -114,10 +108,40 @@ public class DatabaseService {
                             value TEXT NULL
                         )
                     """).execute();
-            connection.prepareStatement("""
-                        CREATE UNIQUE INDEX IF NOT EXISTS unique_id ON chat_meta_information (chat_id, information_key)
-                    """).execute();
+            addMessageThreads(connection);
         });
+    }
+
+    void addMessageThreads(Connection connection) throws SQLException {
+        final var taskColumns = connection.prepareStatement("SELECT name FROM pragma_table_info('task') WHERE name = 'message_thread_id'").executeQuery();
+        final var taskHasThread = taskColumns.next();
+        if (!taskHasThread) {
+            connection.prepareStatement("ALTER TABLE task ADD COLUMN message_thread_id INTEGER NOT NULL DEFAULT 0").execute();
+        }
+
+        final var statusMessageColumns = connection.prepareStatement("SELECT name FROM pragma_table_info('task_status_message') WHERE name = 'message_thread_id'").executeQuery();
+        final var statusMessageHasThread = statusMessageColumns.next();
+        if (!statusMessageHasThread) {
+            connection.prepareStatement("ALTER TABLE task_status_message ADD COLUMN message_thread_id INTEGER NOT NULL DEFAULT 0").execute();
+        }
+
+        final var metaInformationColumns = connection.prepareStatement("SELECT name FROM pragma_table_info('chat_meta_information') WHERE name = 'message_thread_id'").executeQuery();
+        final var metaInformationHasThread = metaInformationColumns.next();
+        if (!metaInformationHasThread) {
+            connection.prepareStatement("ALTER TABLE chat_meta_information ADD COLUMN message_thread_id INTEGER NOT NULL DEFAULT 0").execute();
+        }
+
+        connection.prepareStatement("DROP INDEX IF EXISTS unique_id").execute();
+        connection.prepareStatement("DROP INDEX IF EXISTS fast_all_id").execute();
+        connection.prepareStatement("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS task_status_message_unique_id ON task_status_message (task_id, chat_id, message_thread_id)
+                """).execute();
+        connection.prepareStatement("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS task_status_message_fast_all_id ON task_status_message (task_id, chat_id, message_thread_id, message_id)
+                """).execute();
+        connection.prepareStatement("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS chat_meta_information_unique_id ON chat_meta_information (chat_id, message_thread_id, information_key)
+                """).execute();
     }
 
     public Connection openConnection() throws SQLException {

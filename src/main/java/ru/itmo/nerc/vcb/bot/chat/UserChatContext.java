@@ -154,9 +154,9 @@ public class UserChatContext extends CommonChatContext {
             sj.add("/activationtask <code>[...parameters]</code> — <i>[PG]</i> Приостановить или возобновить задачу по описанию:");
             sj.add("    * <code>[id]</code>: Идентификатор существующей задачи");
             sj.add("");
-            sj.add("/writemeta <code>[...parameters]</code> — <i>[PG]</i> Записать метаинформацияю для текущего чата:");
-            sj.add("    * <code>[key]</code>: Идентификатор существующей задачи");
-            sj.add("    * <code>[value]</code>: Идентификатор существующей задачи");
+            sj.add("/writemeta <code>[...parameters]</code> — <i>[PG]</i> Записать метаинформацию для текущего чата или топика:");
+            sj.add("    * <code>[key]</code>: Ключ метаинформации, например, <code>default groups</code> для привязки к холлу");
+            sj.add("    * <code>[value]</code>: Значение метаинформации, например, список холлов");
         }
 
         sj.add("");

@@ -32,23 +32,24 @@ public class TaskStatusMessageService {
 
     private final Map<StatusMessageKey, TaskStatusMessage> key2message = new ConcurrentHashMap<>();
 
-    private record StatusMessageKey(long taskId, long chatId) {
+    private record StatusMessageKey(long taskId, long chatId, Integer messageThreadId) {
 
     }
 
     public TaskStatusMessage addMessage(TaskContext task, Message message) {
         final var statusMessage = new TaskStatusMessage(task, message);
-        key2message.put(new StatusMessageKey(statusMessage.getTaskId(), statusMessage.getChatId()), statusMessage);
+        key2message.put(new StatusMessageKey(statusMessage.getTaskId(), statusMessage.getChatId(), statusMessage.getMessageThreadId()), statusMessage);
         return statusMessage;
     }
 
-    public TaskStatusMessage findByTaskAndChat(long taskId, long chatId) {
-        return key2message.computeIfAbsent(new StatusMessageKey(taskId, chatId), __ -> {
+    public TaskStatusMessage findByTaskAndChat(long taskId, long chatId, Integer messageThreadId) {
+        return key2message.computeIfAbsent(new StatusMessageKey(taskId, chatId, messageThreadId), __ -> {
             return DatabaseService.getInstance().mapWrappedOrNull(connection -> {
-                try (final var selectStatement = connection.prepareStatement("SELECT * FROM task_status_message WHERE task_id = ? AND chat_id = ?")) {
+                try (final var selectStatement = connection.prepareStatement("SELECT * FROM task_status_message WHERE task_id = ? AND chat_id = ? AND message_thread_id = ? ORDER BY id DESC LIMIT 1")) {
                     int i = 1;
                     selectStatement.setLong(i++, taskId);
                     selectStatement.setLong(i++, chatId);
+                    selectStatement.setInt(i++, messageThreadId == null ? 0 : messageThreadId);
 
                     try (final var queryResult = selectStatement.executeQuery()) {
                         if (queryResult.next()) {

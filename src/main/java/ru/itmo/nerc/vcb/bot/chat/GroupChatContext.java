@@ -16,6 +16,10 @@ public class GroupChatContext extends CommonChatContext {
         super(chat);
     }
 
+    public GroupChatContext(Chat chat, Integer messageThreadId) {
+        super(chat, messageThreadId);
+    }
+
     @Override
     protected void processCommandProcessingException(UserContext user, Message message, CommandProcessingException exception) throws TelegramApiException {
         if (user != null && user.getPrivateChatId() != 0L) {

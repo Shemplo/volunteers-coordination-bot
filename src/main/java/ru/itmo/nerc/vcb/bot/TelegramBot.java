@@ -87,14 +87,14 @@ public class TelegramBot implements LongPollingSingleThreadUpdateConsumer {
                 }
 
                 final var message = (Message) maybeMessage;
-                final var context = chatContextService.findContextForChat(message.getChat());
+                final var context = chatContextService.findContextForChat(message.getChat(), message.getMessageThreadId());
 
                 if (context != null) {
                     context.onUpdateReceived(update);
                 }
             } else if (update.hasMessage()) {
                 final var chat = update.getMessage().getChat();
-                final var context = chatContextService.findContextForChat(chat);
+                final var context = chatContextService.findContextForChat(chat, update.getMessage().getMessageThreadId());
 
                 if (context != null) {
                     context.onUpdateReceived(update);
@@ -114,7 +114,11 @@ public class TelegramBot implements LongPollingSingleThreadUpdateConsumer {
     }
 
     public Message sendMessage(long chatId, Consumer<SendMessageBuilder<?, ?>> configurer) throws TelegramApiException {
-        final var message = SendMessage.builder().chatId(chatId).parseMode("HTML");
+        return sendMessage(chatId, null, configurer);
+    }
+
+    public Message sendMessage(long chatId, Integer messageThreadId, Consumer<SendMessageBuilder<?, ?>> configurer) throws TelegramApiException {
+        final var message = SendMessage.builder().chatId(chatId).messageThreadId(messageThreadId).parseMode("HTML");
 
         configurer.accept(message);
         return telegramClient.execute(message.build());
@@ -128,21 +132,14 @@ public class TelegramBot implements LongPollingSingleThreadUpdateConsumer {
     }
 
     public Message sendReplyMessage(Message replyTo, Consumer<SendMessageBuilder<?, ?>> configurer) throws TelegramApiException {
-        return sendReplyMessage(replyTo.getChatId(), replyTo.getMessageId(), configurer);
+        return sendReplyMessage(replyTo.getChatId(), replyTo.getMessageId(), replyTo.getMessageThreadId(), configurer);
     }
 
-    public Message sendReplyMessage(long chatId, int messageId, Consumer<SendMessageBuilder<?, ?>> configurer) throws TelegramApiException {
-        final var message = SendMessage.builder().chatId(chatId).replyToMessageId(messageId).parseMode("HTML");
+    public Message sendReplyMessage(long chatId, int messageId, Integer messageThreadId, Consumer<SendMessageBuilder<?, ?>> configurer) throws TelegramApiException {
+        final var message = SendMessage.builder().chatId(chatId).messageThreadId(messageThreadId).replyToMessageId(messageId).parseMode("HTML");
 
         configurer.accept(message);
         return telegramClient.execute(message.build());
-    }
-
-    public void sendReplyMessageAsync(Message replyTo, Consumer<SendMessageBuilder<?, ?>> configurer) throws TelegramApiException {
-        final var message = SendMessage.builder().chatId(replyTo.getChatId()).replyToMessageId(replyTo.getMessageId()).parseMode("HTML");
-
-        configurer.accept(message);
-        telegramClient.executeAsync(message.build());
     }
 
     public boolean sendInlineQueryResult(InlineQuery query, Collection<? extends InlineQueryResult> results) throws TelegramApiException {

@@ -32,20 +32,21 @@ public class ChatMetaInformationService {
 
     private final Map<MetaInformationKey, ChatMetaInformation> key2metaInf = new ConcurrentHashMap<>();
 
-    private record MetaInformationKey(long chatId, String key) {
+    private record MetaInformationKey(long chatId, Integer messageThreadId, String key) {
 
     }
 
-    public ChatMetaInformation findOrCreateByChatAndKey(long chatId, String key) {
-        return key2metaInf.computeIfAbsent(new MetaInformationKey(chatId, key), __ -> {
+    public ChatMetaInformation findOrCreateByChatAndKey(long chatId, Integer messageThreadId, String key) {
+        return key2metaInf.computeIfAbsent(new MetaInformationKey(chatId, messageThreadId, key), __ -> {
             return DatabaseService.getInstance().mapWrappedOrNull(connection -> {
-                try (final var selectStatement = connection.prepareStatement("SELECT * FROM chat_meta_information WHERE chat_id = ? AND information_key = ?")) {
+                try (final var selectStatement = connection.prepareStatement("SELECT * FROM chat_meta_information WHERE chat_id = ? AND information_key = ? AND message_thread_id = ?")) {
                     int i = 1;
                     selectStatement.setLong(i++, chatId);
                     selectStatement.setString(i++, Base64.getEncoder().encodeToString(key.getBytes()));
+                    selectStatement.setInt(i++, messageThreadId == null ? 0 : messageThreadId);
 
                     try (final var queryResult = selectStatement.executeQuery()) {
-                        return queryResult.next() ? new ChatMetaInformation(queryResult) : new ChatMetaInformation(chatId, key);
+                        return queryResult.next() ? new ChatMetaInformation(queryResult) : new ChatMetaInformation(chatId, messageThreadId, key);
                     }
                 }
             });
