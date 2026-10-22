@@ -12,17 +12,17 @@ public class HttpClientHolder {
 
     private volatile OkHttpClient instance;
 
-    public OkHttpClient getInstance () {
+    public OkHttpClient getInstance() {
         if (instance == null) {
             synchronized (HttpClientHolder.class) {
                 if (instance == null) {
-                    final var configuration = ConfigurationHolder.getConfigurationFromSingleton ();
-                    final var proxy = configuration.getProxy ();
+                    final var configuration = ConfigurationHolder.getConfigurationFromSingleton();
+                    final var proxy = configuration.getProxy();
 
-                    final var clientBuilder = new OkHttpClient.Builder ();
+                    final var clientBuilder = new OkHttpClient.Builder();
                     if (proxy != null) {
-                        final var proxyAddress = new InetSocketAddress(proxy.getHost (), proxy.getPort ());
-                        clientBuilder.proxy (new Proxy(proxy.getType (), proxyAddress));
+                        final var proxyAddress = new InetSocketAddress(proxy.getHost(), proxy.getPort());
+                        clientBuilder.proxy(new Proxy(proxy.getType(), proxyAddress));
                     }
                     instance = clientBuilder.build();
                 }

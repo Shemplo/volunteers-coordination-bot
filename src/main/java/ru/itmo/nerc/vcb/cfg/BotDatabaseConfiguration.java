@@ -6,12 +6,13 @@ import lombok.Setter;
 import lombok.ToString;
 
 @ToString
-@Getter @Setter
+@Getter
+@Setter
 @NoArgsConstructor
 public class BotDatabaseConfiguration {
-    
+
     private String filename;
     private String password;
     private String username;
-    
+
 }

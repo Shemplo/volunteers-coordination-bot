@@ -36,149 +36,123 @@ import ru.itmo.nerc.vcb.utils.thread.ThreadsPool;
 public class TelegramBot implements LongPollingSingleThreadUpdateConsumer {
 
     private static volatile TelegramBot instance;
-    
-    public static TelegramBot getInstance () {
+
+    public static TelegramBot getInstance() {
         if (instance == null) {
             synchronized (TelegramBot.class) {
                 if (instance == null) {
-                    final var configuration = ConfigurationHolder.getConfigurationFromSingleton ();
+                    final var configuration = ConfigurationHolder.getConfigurationFromSingleton();
 
-                    final var botToken = configuration.getCredentials ().getToken ();
-                    final var telegramClient = new OkHttpTelegramClient (HttpClientHolder.getInstance (), botToken);
-                    
-                    instance = new TelegramBot (telegramClient);
+                    final var botToken = configuration.getCredentials().getToken();
+                    final var telegramClient = new OkHttpTelegramClient(HttpClientHolder.getInstance(), botToken);
+
+                    instance = new TelegramBot(telegramClient);
                 }
             }
         }
-        
+
         return instance;
     }
-    
-    private final ChatContextService chatContextService = ChatContextService.getInstance ();
-    private final InlineQueryProcessor inlineQueryProcessor = InlineQueryProcessor.getInstance ();
-    
+
+    private final ChatContextService chatContextService = ChatContextService.getInstance();
+    private final InlineQueryProcessor inlineQueryProcessor = InlineQueryProcessor.getInstance();
+
     @Getter
     private final TelegramClient telegramClient;
-    
-    @SuppressWarnings ("unused")
+
+    @SuppressWarnings("unused")
     private final ThreadsPool threadsPool;
-    
-    public TelegramBot (TelegramClient telegramClient) {
+
+    public TelegramBot(TelegramClient telegramClient) {
         this.telegramClient = telegramClient;
-        
+
         // TODO Shutdown it gracefully (but actually it's a daemon)
-        threadsPool = new ThreadsPool (1, 32, "iq-processor-", () -> inlineQueryProcessor);
+        threadsPool = new ThreadsPool(1, 32, "iq-processor-", () -> inlineQueryProcessor);
     }
-    
+
     @Override
-    public void consume (Update update) {
-        log.info ("Received update: {}", update);
-        
+    public void consume(Update update) {
+        log.info("Received update: {}", update);
+
         try {
-            if (update.hasInlineQuery ()) {
+            if (update.hasInlineQuery()) {
                 // This will process updates asynchronously
-                inlineQueryProcessor.addInlineQueryToQueue (update);
-                
+                inlineQueryProcessor.addInlineQueryToQueue(update);
+
                 //inlineQueryProcessor.onUpdateReceived (update);
-            } else if (update.hasCallbackQuery ()) {
-                final var maybeMessage = update.getCallbackQuery ().getMessage ();
+            } else if (update.hasCallbackQuery()) {
+                final var maybeMessage = update.getCallbackQuery().getMessage();
                 if (!(maybeMessage instanceof Message)) {
                     return;
                 }
-                
+
                 final var message = (Message) maybeMessage;
-                final var context = chatContextService.findContextForChat (message.getChat ());
-                
+                final var context = chatContextService.findContextForChat(message.getChat());
+
                 if (context != null) {
-                    context.onUpdateReceived (update);
+                    context.onUpdateReceived(update);
                 }
-            } else if (update.hasMessage ()) {
-                final var chat = update.getMessage ().getChat ();
-                final var context = chatContextService.findContextForChat (chat);
-                
+            } else if (update.hasMessage()) {
+                final var chat = update.getMessage().getChat();
+                final var context = chatContextService.findContextForChat(chat);
+
                 if (context != null) {
-                    context.onUpdateReceived (update);
+                    context.onUpdateReceived(update);
                 }
             }
         } catch (TelegramApiException tapie) {
-            tapie.printStackTrace ();
+            tapie.printStackTrace();
         }
     }
-    
-    public void deleteMessage (Message message) throws TelegramApiException {
-        telegramClient.executeAsync (DeleteMessage.builder ()
-            .messageId (message.getMessageId ())
-            .chatId (message.getChatId ())
-            .build ());
+
+    public void deleteMessage(Message message) throws TelegramApiException {
+        telegramClient.executeAsync(DeleteMessage.builder().messageId(message.getMessageId()).chatId(message.getChatId()).build());
     }
-    
-    public ChatMember getChatMember (long chatId, long userId) throws TelegramApiException {
-        return telegramClient.execute (GetChatMember.builder ()
-            .chatId (chatId)
-            .userId (userId)
-            .build ());
+
+    public ChatMember getChatMember(long chatId, long userId) throws TelegramApiException {
+        return telegramClient.execute(GetChatMember.builder().chatId(chatId).userId(userId).build());
     }
-    
-    public Message sendMessage (long chatId, Consumer <SendMessageBuilder <?, ?>> configurer) throws TelegramApiException {
-        final var message = SendMessage.builder ()
-            .chatId (chatId)
-            .parseMode ("HTML");
-        
-        configurer.accept (message);
-        return telegramClient.execute (message.build ());
+
+    public Message sendMessage(long chatId, Consumer<SendMessageBuilder<?, ?>> configurer) throws TelegramApiException {
+        final var message = SendMessage.builder().chatId(chatId).parseMode("HTML");
+
+        configurer.accept(message);
+        return telegramClient.execute(message.build());
     }
-    
-    public void sendMessageEdit (long chatId, int messageId, Consumer <EditMessageTextBuilder <?, ?>> configurer) throws TelegramApiException {
-        final var message = EditMessageText.builder ()
-            .chatId (chatId)
-            .messageId (messageId)
-            .parseMode ("HTML");
-        
-        configurer.accept (message);
-        telegramClient.executeAsync (message.build ());
+
+    public void sendMessageEdit(long chatId, int messageId, Consumer<EditMessageTextBuilder<?, ?>> configurer) throws TelegramApiException {
+        final var message = EditMessageText.builder().chatId(chatId).messageId(messageId).parseMode("HTML");
+
+        configurer.accept(message);
+        telegramClient.executeAsync(message.build());
     }
-    
-    public Message sendReplyMessage (Message replyTo, Consumer <SendMessageBuilder <?, ?>> configurer) throws TelegramApiException {
-        return sendReplyMessage (replyTo.getChatId (), replyTo.getMessageId (), configurer);
+
+    public Message sendReplyMessage(Message replyTo, Consumer<SendMessageBuilder<?, ?>> configurer) throws TelegramApiException {
+        return sendReplyMessage(replyTo.getChatId(), replyTo.getMessageId(), configurer);
     }
-    
-    public Message sendReplyMessage (long chatId, int messageId, Consumer <SendMessageBuilder <?, ?>> configurer) throws TelegramApiException {
-        final var message = SendMessage.builder ()
-            .chatId (chatId)
-            .replyToMessageId (messageId)
-            .parseMode ("HTML");
-        
-        configurer.accept (message);
-        return telegramClient.execute (message.build ());
+
+    public Message sendReplyMessage(long chatId, int messageId, Consumer<SendMessageBuilder<?, ?>> configurer) throws TelegramApiException {
+        final var message = SendMessage.builder().chatId(chatId).replyToMessageId(messageId).parseMode("HTML");
+
+        configurer.accept(message);
+        return telegramClient.execute(message.build());
     }
-    
-    public void sendReplyMessageAsync (Message replyTo, Consumer <SendMessageBuilder <?, ?>> configurer) throws TelegramApiException {
-        final var message = SendMessage.builder ()
-            .chatId (replyTo.getChatId ())
-            .replyToMessageId (replyTo.getMessageId ())
-            .parseMode ("HTML");
-        
-        configurer.accept (message);
-        telegramClient.executeAsync (message.build ());
+
+    public void sendReplyMessageAsync(Message replyTo, Consumer<SendMessageBuilder<?, ?>> configurer) throws TelegramApiException {
+        final var message = SendMessage.builder().chatId(replyTo.getChatId()).replyToMessageId(replyTo.getMessageId()).parseMode("HTML");
+
+        configurer.accept(message);
+        telegramClient.executeAsync(message.build());
     }
-    
-    public boolean sendInlineQueryResult (InlineQuery query, Collection <? extends InlineQueryResult> results) throws TelegramApiException {
-        return telegramClient.execute (AnswerInlineQuery.builder ()
-            .inlineQueryId (query.getId ())
-            .results (results)
-            .build ());
+
+    public boolean sendInlineQueryResult(InlineQuery query, Collection<? extends InlineQueryResult> results) throws TelegramApiException {
+        return telegramClient.execute(AnswerInlineQuery.builder().inlineQueryId(query.getId()).results(results).build());
     }
-    
-    public void setReactionOnMessage (Message message, String emoji) throws TelegramApiException {
-        telegramClient.executeAsync (SetMessageReaction.builder ()
-            .chatId (message.getChatId ())
-            .messageId (message.getMessageId ())
-            .reactionTypes (List.of (
-                ReactionTypeEmoji.builder ()
-                    .emoji (emoji)
-                    .build ()
-            ))
-            .build ());
+
+    public void setReactionOnMessage(Message message, String emoji) throws TelegramApiException {
+        telegramClient.executeAsync(SetMessageReaction.builder().chatId(message.getChatId()).messageId(message.getMessageId()).reactionTypes(List.of(
+                ReactionTypeEmoji.builder().emoji(emoji).build()
+        )).build());
     }
-    
+
 }

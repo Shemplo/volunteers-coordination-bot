@@ -8,12 +8,13 @@ import lombok.Setter;
 import lombok.ToString;
 
 @ToString
-@Getter @Setter
+@Getter
+@Setter
 @NoArgsConstructor
 public class BotProxyConfiguration {
-    
+
     private String host;
     private int port;
     private Type type;
-    
+
 }
