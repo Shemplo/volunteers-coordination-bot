@@ -83,9 +83,6 @@ public class DatabaseService {
                         )
                     """).execute();
             connection.prepareStatement("""
-                        CREATE UNIQUE INDEX IF NOT EXISTS unique_id ON task_status_change (task_id, change_date, author_id)
-                    """).execute();
-            connection.prepareStatement("""
                         CREATE INDEX IF NOT EXISTS date_id ON task_status_change (change_date)
                     """).execute();
 
