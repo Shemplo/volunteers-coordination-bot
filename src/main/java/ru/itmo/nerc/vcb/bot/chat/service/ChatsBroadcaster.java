@@ -68,9 +68,9 @@ public class ChatsBroadcaster implements SupervisedRunnable {
         return tasksQueue.isEmpty() ? RunnableActivity.IDLE : RunnableActivity.RUNNING;
     }
 
-    public void sendMessage(long chatId, String text, InlineKeyboardMarkup keyboard, Consumer<Message> onMessageSent) {
+    public void sendMessage(long chatId, Integer messageThreadId, String text, InlineKeyboardMarkup keyboard, Consumer<Message> onMessageSent) {
         tasksQueue.add(() -> {
-            final var message = TelegramBot.getInstance().sendMessage(chatId, cfg -> {
+            final var message = TelegramBot.getInstance().sendMessage(chatId, messageThreadId, cfg -> {
                 cfg.replyMarkup(keyboard);
                 cfg.text(text);
             });
@@ -81,8 +81,12 @@ public class ChatsBroadcaster implements SupervisedRunnable {
 
     @Deprecated
     public void sendBroadcastMessage(TaskContext task, long chatId, String text, InlineKeyboardMarkup keyboard) {
+        sendBroadcastMessage(task, chatId, null, text, keyboard);
+    }
+
+    public void sendBroadcastMessage(TaskContext task, long chatId, Integer messageThreadId, String text, InlineKeyboardMarkup keyboard) {
         tasksQueue.add(() -> {
-            final var message = TelegramBot.getInstance().sendMessage(chatId, cfg -> {
+            final var message = TelegramBot.getInstance().sendMessage(chatId, messageThreadId, cfg -> {
                 cfg.replyMarkup(keyboard);
                 cfg.text(text);
             });
@@ -93,8 +97,12 @@ public class ChatsBroadcaster implements SupervisedRunnable {
 
     @Deprecated
     public void sendBroadcastUpdate(TaskContext task, boolean taskEdited, long chatId, String text, InlineKeyboardMarkup keyboard) {
+        sendBroadcastUpdate(task, taskEdited, chatId, null, text, keyboard);
+    }
+
+    public void sendBroadcastUpdate(TaskContext task, boolean taskEdited, long chatId, Integer messageThreadId, String text, InlineKeyboardMarkup keyboard) {
         tasksQueue.add(() -> {
-            final var statusMessage = TaskStatusMessageService.getInstance().findByTaskAndChat(task.getId(), chatId);
+            final var statusMessage = TaskStatusMessageService.getInstance().findByTaskAndChat(task.getId(), chatId, messageThreadId);
             final var bot = TelegramBot.getInstance();
 
             if (statusMessage != null) {
@@ -107,11 +115,11 @@ public class ChatsBroadcaster implements SupervisedRunnable {
             if (taskEdited) {
                 final var messageThatEdited = "‼️ Задача #tid%d была изменена. Проверьте, что ответ группы, в которой вы состоите, актуален и соответствует изменению".formatted(task.getId());
                 if (statusMessage == null) {
-                    bot.sendMessage(chatId, cfg -> {
+                    bot.sendMessage(chatId, messageThreadId, cfg -> {
                         cfg.text(messageThatEdited);
                     });
                 } else {
-                    bot.sendReplyMessage(chatId, statusMessage.getMessageId(), cfg -> {
+                    bot.sendReplyMessage(chatId, statusMessage.getMessageId(), messageThreadId, cfg -> {
                         cfg.text(messageThatEdited);
                     });
                 }

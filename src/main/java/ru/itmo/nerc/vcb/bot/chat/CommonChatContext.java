@@ -51,10 +51,18 @@ public class CommonChatContext implements ChatContext {
     @Getter
     protected final long chatId;
 
+    @Getter
+    protected final Integer messageThreadId;
+
     protected final Deque<ChatPending> pendings = new ConcurrentLinkedDeque<>();
 
     public CommonChatContext(Chat chat) {
+        this(chat, null);
+    }
+
+    public CommonChatContext(Chat chat, Integer messageThreadId) {
         this.chatId = chat.getId();
+        this.messageThreadId = messageThreadId;
     }
 
     protected final ChatContextService chatContextService = ChatContextService.getInstance();
@@ -184,7 +192,7 @@ public class CommonChatContext implements ChatContext {
                 cfg.text(exception.getMessage());
             });
         } else {
-            TelegramBot.getInstance().sendMessage(chatId, cfg -> {
+            TelegramBot.getInstance().sendMessage(chatId, messageThreadId, cfg -> {
                 cfg.text(exception.getMessage());
             });
         }
@@ -201,7 +209,7 @@ public class CommonChatContext implements ChatContext {
             call.run();
             return true;
         } else {
-            TelegramBot.getInstance().sendMessage(chatId, cfg -> {
+            TelegramBot.getInstance().sendMessage(chatId, messageThreadId, cfg -> {
                 cfg.text("Закончите предыдущее действие перед тем как вызвать новую команду ⚠");
             });
 
@@ -271,7 +279,7 @@ public class CommonChatContext implements ChatContext {
         parsedQuery.setEvent(event);
 
         try {
-            final var taskMessage = TelegramBot.getInstance().sendMessage(chatId, cfg -> {
+            final var taskMessage = TelegramBot.getInstance().sendMessage(chatId, messageThreadId, cfg -> {
                 cfg.text(TaskContext.prepareShortTaskMessage(user, task, type).toString());
             });
 
@@ -388,7 +396,7 @@ public class CommonChatContext implements ChatContext {
         }
 
         try {
-            TelegramBot.getInstance().sendMessage(chatId, cfg -> {
+            TelegramBot.getInstance().sendMessage(chatId, messageThreadId, cfg -> {
                 cfg.text(sj.toString());
             });
         } catch (TelegramApiException tapie) {
@@ -443,11 +451,11 @@ public class CommonChatContext implements ChatContext {
         final var key = parsedQuery.getKey();
         final var value = parsedQuery.getValue();
 
-        final var metaInformation = chatMetaInformationService.findOrCreateByChatAndKey(chatId, key);
+        final var metaInformation = chatMetaInformationService.findOrCreateByChatAndKey(chatId, messageThreadId, key);
         metaInformation.setValue("null".equals(value) ? null : value);
 
         try {
-            TelegramBot.getInstance().sendMessage(chatId, cfg -> {
+            TelegramBot.getInstance().sendMessage(chatId, messageThreadId, cfg -> {
                 cfg.text("Записано значение метаинформации для этого чата\n<code>" + key + ": " + value + "</code>");
             });
         } catch (TelegramApiException tapie) {

@@ -12,6 +12,8 @@ public interface ChatContext extends TelegramChildBot {
 
     long getChatId();
 
+    Integer getMessageThreadId();
+
     void processCommand(UserContext user, Message message, Pair<String, String> command) throws CommandProcessingException, TelegramApiException;
 
 }

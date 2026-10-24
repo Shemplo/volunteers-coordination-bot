@@ -49,6 +49,7 @@ public class TaskContext {
 
     // Effectively final
     private volatile long chatId;
+    private volatile Integer messageThreadId;
     private volatile int messageId;
     private volatile long authorId;
 
@@ -63,6 +64,7 @@ public class TaskContext {
 
     public TaskContext(UserContext author, Message message, ParsedQuery parsedQuery) {
         chatId = message.getChatId();
+        messageThreadId = message.getMessageThreadId();
         messageId = message.getMessageId();
         authorId = author.getUserId();
 
@@ -72,7 +74,7 @@ public class TaskContext {
 
         if (parsedQuery.getGroups() == null) {
             final var chatMetaInformationService = ChatMetaInformationService.getInstance();
-            final var defaultGroups = chatMetaInformationService.findOrCreateByChatAndKey(chatId, ChatMetaInformation.KEY_DEFAULT_GROUPS);
+            final var defaultGroups = chatMetaInformationService.findOrCreateByChatAndKey(chatId, message.getMessageThreadId(), ChatMetaInformation.KEY_DEFAULT_GROUPS);
             if (defaultGroups.getValue() != null) {
                 final var defaultGroupsList = Arrays.asList(defaultGroups.getValue().split("\\s*,\\s*"));
                 groups = TaskUtils.decideGroups(parsedQuery.getEvent(), defaultGroupsList).a;
@@ -91,6 +93,8 @@ public class TaskContext {
         id = queryResult.getLong("id");
 
         chatId = queryResult.getLong("chat_id");
+        final var threadId = queryResult.getInt("message_thread_id");
+        messageThreadId = threadId == 0 ? null : threadId;
         messageId = queryResult.getInt("message_id");
         authorId = queryResult.getLong("author_id");
 
@@ -113,12 +117,13 @@ public class TaskContext {
 
     private Long insertAndGetId(long chatId, int messageId, long authorId, TaskState state) {
         return DatabaseService.getInstance().mapWrappedOrNull(connection -> {
-            try (final var insertStatement = connection.prepareStatement("INSERT INTO task (chat_id, message_id, author_id, state) VALUES (?, ?, ?, ?)")) {
+            try (final var insertStatement = connection.prepareStatement("INSERT INTO task (chat_id, message_id, author_id, state, message_thread_id) VALUES (?, ?, ?, ?, ?)")) {
                 int i = 1;
                 insertStatement.setLong(i++, chatId);
                 insertStatement.setInt(i++, messageId);
                 insertStatement.setLong(i++, authorId);
                 insertStatement.setString(i++, state.name());
+                insertStatement.setInt(i++, messageThreadId == null ? 0 : messageThreadId);
                 insertStatement.execute();
             }
 
@@ -255,6 +260,11 @@ public class TaskContext {
             log.info("Broadcast message to @{}...", member.getUsername());
             taskUpdatesBroadcast.sendBroadcastMessage(this, member.getPrivateChatId(), text, null);
         }
+
+        for (final var destination : findGroupChats(group)) {
+            taskUpdatesBroadcast.sendMessage(destination.getChatId(), destination.getMessageThreadId(), text, null, message -> {
+            });
+        }
     }
 
     public void broadcastTaskForGroup(String group) {
@@ -272,6 +282,9 @@ public class TaskContext {
 
                     log.info("Broadcast message to @{}...", member.getUsername());
                     taskUpdatesBroadcast.sendBroadcastMessage(this, member.getPrivateChatId(), text, keyboard);
+                }
+                for (final var destination : findGroupChats(group)) {
+                    taskUpdatesBroadcast.sendBroadcastMessage(this, destination.getChatId(), destination.getMessageThreadId(), text, keyboard);
                 }
             });
         } catch (TelegramApiException tapie) {
@@ -295,10 +308,19 @@ public class TaskContext {
                     log.info("Broadcast update to @{}...", member.getUsername());
                     taskUpdatesBroadcast.sendBroadcastUpdate(this, taskEdited, member.getPrivateChatId(), text, keyboard);
                 }
+                for (final var destination : findGroupChats(group)) {
+                    taskUpdatesBroadcast.sendBroadcastUpdate(this, taskEdited, destination.getChatId(), destination.getMessageThreadId(), text, keyboard);
+                }
             });
         } catch (TelegramApiException tapie) {
             log.error("Failed to send message", tapie);
         }
+    }
+
+    private List<ChatMetaInformation> findGroupChats(String group) {
+        final var event = ConfigurationHolder.getConfigurationFromSingleton().getEvent();
+        final var bindings = ChatMetaInformationService.getInstance().findByKey(ChatMetaInformation.KEY_DEFAULT_GROUPS);
+        return bindings.stream().filter(binding -> binding.getChatId() != chatId || !Objects.equals(binding.getMessageThreadId(), messageThreadId)).filter(binding -> binding.getValue() != null).filter(binding -> TaskUtils.decideGroups(event, Arrays.asList(binding.getValue().split("\\s*,\\s*"))).a.contains(group)).toList();
     }
 
     private void prepareGroupMessage(String group, FailableBiConsumer<String, InlineKeyboardMarkup, TelegramApiException> doOnReady) throws TelegramApiException {

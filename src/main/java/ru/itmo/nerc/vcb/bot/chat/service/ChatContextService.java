@@ -31,20 +31,23 @@ public class ChatContextService {
         return instance;
     }
 
-    private final Map<Long, ChatContext> id2context = new ConcurrentHashMap<>();
+    private final Map<ChatKey, ChatContext> id2context = new ConcurrentHashMap<>();
 
-    public ChatContext findContextForChat(Chat chat) {
-        return id2context.computeIfAbsent(chat.getId(), __ -> {
+    private record ChatKey(long chatId, Integer messageThreadId) {
+    }
+
+    public ChatContext findContextForChat(Chat chat, Integer messageThreadId) {
+        return id2context.computeIfAbsent(new ChatKey(chat.getId(), messageThreadId), __ -> {
             if (chat.isUserChat()) {
                 final var context = new UserChatContext(chat);
 
                 return context;
             } else if (chat.isGroupChat() || chat.isSuperGroupChat()) {
-                final var context = new GroupChatContext(chat);
+                final var context = new GroupChatContext(chat, messageThreadId);
 
                 return context;
             } else {
-                return new CommonChatContext(chat);
+                return new CommonChatContext(chat, messageThreadId);
             }
         });
     }

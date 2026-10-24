@@ -20,20 +20,22 @@ public class ChatMetaInformation {
     private final long id;
 
     private final long chatId;
+    private final Integer messageThreadId;
     private final String key;
     private volatile String value;
 
-    public ChatMetaInformation(long chatId, String key) {
+    public ChatMetaInformation(long chatId, Integer messageThreadId, String key) {
         this.chatId = chatId;
+        this.messageThreadId = messageThreadId;
         this.key = key;
-        this.value = value;
-
         id = insertAndGetId(chatId, key);
     }
 
     public ChatMetaInformation(ResultSet queryResult) throws SQLException {
         id = queryResult.getLong("id");
         chatId = queryResult.getLong("chat_id");
+        var threadId = queryResult.getInt("message_thread_id");
+        messageThreadId = threadId == 0 ? null : threadId;
         key = queryResult.getString("information_key");
         value = queryResult.getString("value");
     }
@@ -43,20 +45,22 @@ public class ChatMetaInformation {
             final var base64e = Base64.getEncoder();
 
             try (final var insertStatement = connection.prepareStatement(
-                    "INSERT INTO chat_meta_information (chat_id, information_key) VALUES (?, ?)"
+                    "INSERT INTO chat_meta_information (chat_id, information_key, message_thread_id) VALUES (?, ?, ?)"
             )) {
                 int i = 1;
                 insertStatement.setLong(i++, chatId);
                 insertStatement.setString(i++, base64e.encodeToString(key.getBytes()));
+                insertStatement.setInt(i++, messageThreadId == null ? 0 : messageThreadId);
                 insertStatement.execute();
             }
 
             try (final var selectStatement = connection.prepareStatement(
-                    "SELECT id FROM chat_meta_information WHERE chat_id = ? AND information_key = ?"
+                    "SELECT id FROM chat_meta_information WHERE chat_id = ? AND information_key = ? AND message_thread_id = ?"
             )) {
                 int i = 1;
                 selectStatement.setLong(i++, chatId);
-                selectStatement.setString(i++, base64e.encodeToString(key.getBytes()));
+                selectStatement.setString(i++, base64e.encodeToString(key.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                selectStatement.setInt(i++, messageThreadId == null ? 0 : messageThreadId);
 
                 try (final var fetchResult = selectStatement.executeQuery()) {
                     if (fetchResult.next()) {
