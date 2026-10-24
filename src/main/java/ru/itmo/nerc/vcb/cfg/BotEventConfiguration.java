@@ -10,66 +10,70 @@ import lombok.Setter;
 import lombok.ToString;
 
 @ToString
-@Getter @Setter
+@Getter
+@Setter
 @NoArgsConstructor
 public class BotEventConfiguration {
-    
+
     private String name;
-    
-    private List <EventGroup> groups;
-    
+
+    private List<EventGroup> groups;
+
     private EventTimetable timetable;
-    
+
     @ToString
-    @Getter @Setter
+    @Getter
+    @Setter
     @NoArgsConstructor
     @AllArgsConstructor
     public static class EventGroup {
-        
+
         private String shortName;
         private String displayName;
-        
-        public String getShortName () {
+
+        public String getShortName() {
             return shortName == null ? displayName : shortName;
         }
-        
+
     }
-    
+
     @ToString
-    @Getter @Setter
+    @Getter
+    @Setter
     @NoArgsConstructor
     @AllArgsConstructor
     public static class EventTimetable {
-        
-        private List <EventActivity> activities;
-        
+
+        private List<EventActivity> activities;
+
     }
-    
+
     @ToString
-    @Getter @Setter
+    @Getter
+    @Setter
     @NoArgsConstructor
     @AllArgsConstructor
     public static class EventActivity {
-        
+
         private String activity;
-        
+
         private Date from;
         private Date to;
-        
+
     }
-    
-    public EventGroup findGroupByName (String name) {
+
+    public EventGroup findGroupByName(String name) {
         if (name == null) {
             return null;
         }
-        
+
         for (final var group : groups) {
-            if (name.equals (group.getShortName ()) || name.equals (group.getDisplayName ())) {
+            if (name.equals(group.getShortName()) || name.equals(group.getDisplayName())) {
                 return group;
             }
         }
-        
+
         return null;
     }
-    
+
 }

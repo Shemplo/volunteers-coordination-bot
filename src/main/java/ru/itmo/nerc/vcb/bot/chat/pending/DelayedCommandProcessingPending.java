@@ -11,43 +11,43 @@ import ru.itmo.nerc.vcb.bot.chat.ex.CommandProcessingException;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 
 public class DelayedCommandProcessingPending extends AbstractChatPending {
-    
+
     private static final long serialVersionUID = 1L;
 
-    private final Pair <String, String> command;
-    
+    private final Pair<String, String> command;
+
     @Getter
     private final boolean blocking = false;
-    
+
     private final Message message;
-    
-    public DelayedCommandProcessingPending (ChatContext chat, UserContext user, Message message, Pair <String, String> command) {
-        super (chat, user);
-        
+
+    public DelayedCommandProcessingPending(ChatContext chat, UserContext user, Message message, Pair<String, String> command) {
+        super(chat, user);
+
         this.command = command;
         this.message = message;
     }
 
     @Override
-    public ChatPendingResult onUpdateReceived (Update update) throws CommandProcessingException, TelegramApiException {
+    public ChatPendingResult onUpdateReceived(Update update) throws CommandProcessingException, TelegramApiException {
         return ChatPendingResult.RESOLVED;
     }
 
     @Override
-    public ChatPendingResult onPendigActivated () throws TelegramApiException {
+    public ChatPendingResult onPendigActivated() throws TelegramApiException {
         try {
-            chat.processCommand (user, message, command);
+            chat.processCommand(user, message, command);
             return ChatPendingResult.RESOLVED;
         } catch (CommandProcessingException cpe) {
-            cpe.printStackTrace ();
+            cpe.printStackTrace();
         }
-        
+
         return ChatPendingResult.RESOLVED;
     }
 
     @Override
-    public void onPendingResolved () throws TelegramApiException {
-        
+    public void onPendingResolved() throws TelegramApiException {
+
     }
-    
+
 }

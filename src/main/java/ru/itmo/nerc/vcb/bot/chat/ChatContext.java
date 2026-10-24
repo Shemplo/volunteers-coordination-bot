@@ -9,9 +9,11 @@ import ru.itmo.nerc.vcb.bot.chat.ex.CommandProcessingException;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 
 public interface ChatContext extends TelegramChildBot {
-    
-    long getChatId ();
-    
-    void processCommand (UserContext user, Message message, Pair <String, String> command) throws CommandProcessingException, TelegramApiException;
-    
+
+    long getChatId();
+
+    Integer getMessageThreadId();
+
+    void processCommand(UserContext user, Message message, Pair<String, String> command) throws CommandProcessingException, TelegramApiException;
+
 }

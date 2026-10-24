@@ -2,42 +2,44 @@ package ru.itmo.nerc.vcb;
 
 import java.sql.SQLException;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import lombok.extern.slf4j.Slf4j;
 import ru.itmo.nerc.vcb.bot.TelegramBot;
 import ru.itmo.nerc.vcb.cfg.ConfigurationHolder;
+import ru.itmo.nerc.vcb.client.HttpClientHolder;
 import ru.itmo.nerc.vcb.db.DatabaseService;
 
 @Slf4j
 public class RunVolunteersCoordinationBot {
-    
-    @SuppressWarnings ("resource")
-    public static void main (String ... args) {
+
+    @SuppressWarnings("resource")
+    public static void main(String... args) {
         try {
-            DatabaseService.getInstance ();
+            DatabaseService.getInstance();
         } catch (RuntimeException re) {
-            if (re.getCause () instanceof SQLException sqle) {
-                log.error ("Failed to initialize database", sqle);
-                System.exit (1);
+            if (re.getCause() instanceof SQLException sqle) {
+                log.error("Failed to initialize database", sqle);
+                System.exit(1);
             }
         }
-        
-        log.info ("Starting VC bot...");
-        final var configuration = ConfigurationHolder.getConfigurationFromSingleton ();
-        final var botToken = configuration.getCredentials ().getToken ();
-        
+
+        log.info("Starting VC bot...");
+        final var configuration = ConfigurationHolder.getConfigurationFromSingleton();
+        final var botToken = configuration.getCredentials().getToken();
+
         try {
-            final var application = new TelegramBotsLongPollingApplication ();
-            application.registerBot (botToken, TelegramBot.getInstance ());
-            
-            log.info ("Starting VC bot... DONE");
+            final var application = new TelegramBotsLongPollingApplication(ObjectMapper::new, HttpClientHolder::getInstance);
+            application.registerBot(botToken, TelegramBot.getInstance());
+
+            log.info("Starting VC bot... DONE");
         } catch (TelegramApiException tapie) {
-            log.error ("Failed to start VC bot", tapie);
+            log.error("Failed to start VC bot", tapie);
         } catch (Exception e) {
-            log.error ("Failed to stop VC bot", e);
+            log.error("Failed to stop VC bot", e);
         }
     }
-    
+
 }

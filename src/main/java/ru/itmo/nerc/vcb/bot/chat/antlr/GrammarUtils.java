@@ -13,38 +13,34 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class GrammarUtils {
-    
-    public static <L extends Lexer, P extends Parser> P parse (Class <L> lexerType, Class <P> parserType, String input) {
+
+    public static <L extends Lexer, P extends Parser> P parse(Class<L> lexerType, Class<P> parserType, String input) {
         try {
-            final var lexerConstructor = lexerType.getConstructor (CharStream.class);
-            final var lexer = lexerConstructor.newInstance (CharStreams.fromString (input));
-            
-            final var parserConstructor = parserType.getConstructor (TokenStream.class);
-            return parserConstructor.newInstance (new CommonTokenStream (lexer));
+            final var lexerConstructor = lexerType.getConstructor(CharStream.class);
+            final var lexer = lexerConstructor.newInstance(CharStreams.fromString(input));
+
+            final var parserConstructor = parserType.getConstructor(TokenStream.class);
+            return parserConstructor.newInstance(new CommonTokenStream(lexer));
         } catch (
-            NoSuchMethodException
-            | SecurityException
-            | InstantiationException
-            | IllegalAccessException
-            | IllegalArgumentException
-            | InvocationTargetException e
+                 NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException |
+                 IllegalArgumentException | InvocationTargetException e
         ) {
-            log.error ("Failed to create parser of type " + parserType.getName () + " (message: " + e.getMessage () + ")", e);
+            log.error("Failed to create parser of type " + parserType.getName() + " (message: " + e.getMessage() + ")", e);
             return null;
         }
     }
-    
-    @SuppressWarnings ("unchecked")
-    public static <P extends Parser> P parse (Class <P> parserType, String input) {
-        final var lexerClassName = parserType.getName ().replaceAll ("Parser($|\\$)", "Lexer");
-        final var classLoader = GrammarUtils.class.getClassLoader ();
+
+    @SuppressWarnings("unchecked")
+    public static <P extends Parser> P parse(Class<P> parserType, String input) {
+        final var lexerClassName = parserType.getName().replaceAll("Parser($|\\$)", "Lexer");
+        final var classLoader = GrammarUtils.class.getClassLoader();
         try {
-            final var lexerType = (Class <Lexer>) classLoader.loadClass (lexerClassName);
-            return parse (lexerType, parserType, input);
+            final var lexerType = (Class<Lexer>) classLoader.loadClass(lexerClassName);
+            return parse(lexerType, parserType, input);
         } catch (ClassNotFoundException cnfe) {
-            log.error ("Lexer type " + lexerClassName + " is not defined (message: " + cnfe.getMessage () + ")", cnfe);
+            log.error("Lexer type " + lexerClassName + " is not defined (message: " + cnfe.getMessage() + ")", cnfe);
             return null;
         }
     }
-    
+
 }

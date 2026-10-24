@@ -13,46 +13,46 @@ import ru.itmo.nerc.vcb.bot.user.UserContext;
 
 @Slf4j
 public class CodeAuthenticationPending extends AbstractChatPending {
-    
+
     private static final long serialVersionUID = 1L;
-    
+
     @Getter
     private final boolean blocking = true;
-    
-    public CodeAuthenticationPending (ChatContext chat, UserContext user) throws TelegramApiException {
-        super (chat, user);
-        
-        log.info ("Pending {} was created in chat {}", getClass (), chat.getChatId ());
-        onPendigActivated ();
+
+    public CodeAuthenticationPending(ChatContext chat, UserContext user) throws TelegramApiException {
+        super(chat, user);
+
+        log.info("Pending {} was created in chat {}", getClass(), chat.getChatId());
+        onPendigActivated();
     }
-    
+
     @Override
-    public ChatPendingResult onUpdateReceived (Update update) throws CommandProcessingException, TelegramApiException {
-        if (update.hasMessage () && update.getMessage ().hasText ()) {
-            final var message = update.getMessage ();
-            
+    public ChatPendingResult onUpdateReceived(Update update) throws CommandProcessingException, TelegramApiException {
+        if (update.hasMessage() && update.getMessage().hasText()) {
+            final var message = update.getMessage();
+
             if (chat instanceof UserChatContext ucc) {
-                ucc.authenticateUser (user, message, message.getText ());
+                ucc.authenticateUser(user, message, message.getText());
             }
-            
+
             return ChatPendingResult.RESOLVED;
         }
-        
+
         return ChatPendingResult.KEEP;
     }
-    
+
     @Override
-    public ChatPendingResult onPendigActivated () throws TelegramApiException {
-        TelegramBot.getInstance ().sendMessage (chat.getChatId (), cfg -> {
-            cfg.text ("Введите код аутентификации");
+    public ChatPendingResult onPendigActivated() throws TelegramApiException {
+        TelegramBot.getInstance().sendMessage(chat.getChatId(), chat.getMessageThreadId(), cfg -> {
+            cfg.text("Введите код аутентификации");
         });
-        
+
         return ChatPendingResult.KEEP;
     }
-    
+
     @Override
-    public void onPendingResolved () throws TelegramApiException {
-        
+    public void onPendingResolved() throws TelegramApiException {
+
     }
-    
+
 }

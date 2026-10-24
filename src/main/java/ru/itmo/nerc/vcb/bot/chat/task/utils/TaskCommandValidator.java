@@ -8,60 +8,60 @@ import ru.itmo.nerc.vcb.bot.user.UserContext;
 
 @UtilityClass
 public class TaskCommandValidator {
-    
-    public void checkAnswer (ParsedQuery parsedQuery) throws CommandProcessingException {
-        if (parsedQuery.getAnswer () == null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[answer]</code>");
+
+    public void checkAnswer(ParsedQuery parsedQuery) throws CommandProcessingException {
+        if (parsedQuery.getAnswer() == null) {
+            throw new CommandProcessingException("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[answer]</code>");
         }
     }
-    
-    public void checkError (ParsedQuery parsedQuery) throws CommandProcessingException {
-        if (parsedQuery.getError () != null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b> " + parsedQuery.getError ());
+
+    public void checkError(ParsedQuery parsedQuery) throws CommandProcessingException {
+        if (parsedQuery.getError() != null) {
+            throw new CommandProcessingException("<b>Ошибка в запросе:</b> " + parsedQuery.getError());
         }
     }
-    
-    public void checkId (ParsedQuery parsedQuery) throws CommandProcessingException {
-        if (parsedQuery.getId () == null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[id]</code>");
+
+    public void checkId(ParsedQuery parsedQuery) throws CommandProcessingException {
+        if (parsedQuery.getId() == null) {
+            throw new CommandProcessingException("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[id]</code>");
         }
     }
-    
-    public void checkKey (ParsedQuery parsedQuery) throws CommandProcessingException {
-        if (parsedQuery.getKey () == null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[key]</code>");
+
+    public void checkKey(ParsedQuery parsedQuery) throws CommandProcessingException {
+        if (parsedQuery.getKey() == null) {
+            throw new CommandProcessingException("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[key]</code>");
         }
     }
-    
-    public void checkTask (ParsedQuery parsedQuery) throws CommandProcessingException {
-        if (parsedQuery.getTask () == null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[task]</code>");
+
+    public void checkTask(ParsedQuery parsedQuery) throws CommandProcessingException {
+        if (parsedQuery.getTask() == null) {
+            throw new CommandProcessingException("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[task]</code>");
         }
     }
-    
-    public void checkType (ParsedQuery parsedQuery) throws CommandProcessingException {
-        final var type = parsedQuery.getType ();
-        
+
+    public void checkType(ParsedQuery parsedQuery) throws CommandProcessingException {
+        final var type = parsedQuery.getType();
+
         if (type == null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[type]</code>");
-        } else if (!TaskContext.TYPE_TASK.equals (type) && !TaskContext.TYPE_QUESTION.equals (type) && !TaskContext.TYPE_CHECK.equals (type)) {
-            throw new CommandProcessingException (
-                "<b>Ошибка в запросе:</b>\nТип задачи может быть только <code>" + TaskContext.TYPE_TASK
-                + "</code>, <code>" + TaskContext.TYPE_QUESTION + "</code> или <code>" + TaskContext.TYPE_CHECK + "</code>"
-            );
+            throw new CommandProcessingException("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[type]</code>");
+        } else
+            if (!TaskContext.TYPE_TASK.equals(type) && !TaskContext.TYPE_QUESTION.equals(type) && !TaskContext.TYPE_CHECK.equals(type)) {
+                throw new CommandProcessingException(
+                        "<b>Ошибка в запросе:</b>\nТип задачи может быть только <code>" + TaskContext.TYPE_TASK + "</code>, <code>" + TaskContext.TYPE_QUESTION + "</code> или <code>" + TaskContext.TYPE_CHECK + "</code>"
+                );
+            }
+    }
+
+    public void checkUserGroup(UserContext user, long taskId) throws CommandProcessingException {
+        if (user.getGroup() == null) {
+            throw new CommandProcessingException("<b>Ошибка в запросе:</b>\nВы не можете обновить статус задачи, потому что не состоите ни в одной группе\n#tid" + taskId);
         }
     }
-    
-    public void checkUserGroup (UserContext user, long taskId) throws CommandProcessingException {
-        if (user.getGroup () == null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nВы не можете обновить статус задачи, потому что не состоите ни в одной группе\n#tid" + taskId);
+
+    public void checkValue(ParsedQuery parsedQuery) throws CommandProcessingException {
+        if (parsedQuery.getValue() == null) {
+            throw new CommandProcessingException("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[value]</code>");
         }
     }
-    
-    public void checkValue (ParsedQuery parsedQuery) throws CommandProcessingException {
-        if (parsedQuery.getValue () == null) {
-            throw new CommandProcessingException ("<b>Ошибка в запросе:</b>\nОтсутствует необходимое поле <code>[value]</code>");
-        }
-    }
-    
+
 }

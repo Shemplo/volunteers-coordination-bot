@@ -13,46 +13,47 @@ import ru.itmo.nerc.vcb.bot.chat.task.TaskStatusMessage;
 import ru.itmo.nerc.vcb.db.DatabaseService;
 
 @Slf4j
-@NoArgsConstructor (access = AccessLevel.PRIVATE)
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class TaskStatusMessageService {
-    
+
     private static volatile TaskStatusMessageService instance;
-    
-    public static TaskStatusMessageService getInstance () {
+
+    public static TaskStatusMessageService getInstance() {
         if (instance == null) {
             synchronized (TaskStatusMessageService.class) {
                 if (instance == null) {
-                    instance = new TaskStatusMessageService ();
+                    instance = new TaskStatusMessageService();
                 }
             }
         }
-        
+
         return instance;
     }
-    
-    private final Map <StatusMessageKey, TaskStatusMessage> key2message = new ConcurrentHashMap <> ();
-    
-    private record StatusMessageKey (long taskId, long chatId) {
-        
+
+    private final Map<StatusMessageKey, TaskStatusMessage> key2message = new ConcurrentHashMap<>();
+
+    private record StatusMessageKey(long taskId, long chatId, Integer messageThreadId) {
+
     }
-    
-    public TaskStatusMessage addMessage (TaskContext task, Message message) {
-        final var statusMessage = new TaskStatusMessage (task, message);
-        key2message.put (new StatusMessageKey (statusMessage.getTaskId (), statusMessage.getChatId ()), statusMessage);
+
+    public TaskStatusMessage addMessage(TaskContext task, Message message) {
+        final var statusMessage = new TaskStatusMessage(task, message);
+        key2message.put(new StatusMessageKey(statusMessage.getTaskId(), statusMessage.getChatId(), statusMessage.getMessageThreadId()), statusMessage);
         return statusMessage;
     }
-    
-    public TaskStatusMessage findByTaskAndChat (long taskId, long chatId) {
-        return key2message.computeIfAbsent (new StatusMessageKey (taskId, chatId), __ -> {
-            return DatabaseService.getInstance ().mapWrappedOrNull (connection -> {
-                try (final var selectStatement = connection.prepareStatement ("SELECT * FROM task_status_message WHERE task_id = ? AND chat_id = ?")) {
+
+    public TaskStatusMessage findByTaskAndChat(long taskId, long chatId, Integer messageThreadId) {
+        return key2message.computeIfAbsent(new StatusMessageKey(taskId, chatId, messageThreadId), __ -> {
+            return DatabaseService.getInstance().mapWrappedOrNull(connection -> {
+                try (final var selectStatement = connection.prepareStatement("SELECT * FROM task_status_message WHERE task_id = ? AND chat_id = ? AND message_thread_id = ? ORDER BY id DESC LIMIT 1")) {
                     int i = 1;
-                    selectStatement.setLong (i++, taskId);
-                    selectStatement.setLong (i++, chatId);
-                    
-                    try (final var queryResult = selectStatement.executeQuery ()) {
-                        if (queryResult.next ()) {
-                            return new TaskStatusMessage (queryResult);
+                    selectStatement.setLong(i++, taskId);
+                    selectStatement.setLong(i++, chatId);
+                    selectStatement.setInt(i++, messageThreadId == null ? 0 : messageThreadId);
+
+                    try (final var queryResult = selectStatement.executeQuery()) {
+                        if (queryResult.next()) {
+                            return new TaskStatusMessage(queryResult);
                         } else {
                             return null;
                         }
@@ -61,5 +62,5 @@ public class TaskStatusMessageService {
             });
         });
     }
-    
+
 }

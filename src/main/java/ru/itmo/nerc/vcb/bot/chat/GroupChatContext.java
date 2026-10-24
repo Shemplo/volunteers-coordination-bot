@@ -11,20 +11,24 @@ import ru.itmo.nerc.vcb.bot.user.UserContext;
 
 @Slf4j
 public class GroupChatContext extends CommonChatContext {
-    
-    public GroupChatContext (Chat chat) {
-        super (chat);
+
+    public GroupChatContext(Chat chat) {
+        super(chat);
     }
-    
+
+    public GroupChatContext(Chat chat, Integer messageThreadId) {
+        super(chat, messageThreadId);
+    }
+
     @Override
-    protected void processCommandProcessingException (UserContext user, Message message, CommandProcessingException exception) throws TelegramApiException {
-        if (user != null && user.getPrivateChatId () != 0L) {
-            TelegramBot.getInstance ().sendMessage (user.getPrivateChatId (), cfg -> {
-                cfg.text (exception.getMessage ());
+    protected void processCommandProcessingException(UserContext user, Message message, CommandProcessingException exception) throws TelegramApiException {
+        if (user != null && user.getPrivateChatId() != 0L) {
+            TelegramBot.getInstance().sendMessage(user.getPrivateChatId(), cfg -> {
+                cfg.text(exception.getMessage());
             });
         } else {
-            log.error ("User tried to do prohibited action. Message: {}", message.toString ());
+            log.error("User tried to do prohibited action. Message: {}", message.toString());
         }
     }
-    
+
 }
