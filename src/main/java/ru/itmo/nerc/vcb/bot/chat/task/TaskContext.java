@@ -45,6 +45,10 @@ public class TaskContext {
     public static final String STATE_DONE = "✅ Выполнили";
     public static final String STATE_IN_PROCESS = "💃 В процессе";
 
+    public static final String STATE_CHECK_OK = "✅ OK";
+    public static final String STATE_CHECK_FAILED = "❌ Fail";
+    public static final String STATE_CHECK_IN_PROCESS = "💃 Wait";
+
     private final long id;
 
     // Effectively final
@@ -192,8 +196,23 @@ public class TaskContext {
         return state == TaskState.CREATED || state == TaskState.ENABLED;
     }
 
+    /**
+     * @return true if task is actually active for PARTICIPANT's
+     */
+    public boolean isAnswerable() {
+        return state != TaskState.FINALIZED;
+    }
+
     public boolean isDisabled() {
         return state == TaskState.DISABLED;
+    }
+
+    public boolean isCancelled() {
+        return state == TaskState.CANCELLED;
+    }
+
+    public boolean isFinalized() {
+        return state == TaskState.FINALIZED;
     }
 
     public TaskContext setState(UserContext editor, TaskState state) {
@@ -267,7 +286,7 @@ public class TaskContext {
         }
     }
 
-    public void broadcastTaskForGroup(String group) {
+    public void broadcastTaskForGroup(String group, TaskContext task) {
         log.info("Sending broadcast message to `{}` group...", group);
 
         try {
@@ -332,10 +351,17 @@ public class TaskContext {
         final var sj = prepareShortTaskMessage(author, task, type);
         sj.add("#tasks #tid" + id);
 
-        sj.add("");
-        sj.add("🕵️‍♂️ <b>Текущий статус задачи:</b>");
-        var status = appendGroupStatus(sj, group, event);
-        appendStateInformation(sj);
+        TaskStatusChange status = null;
+        if (isCancelled()) {
+            sj.add("❌ Задача отменена");
+        } else if (isFinalized()) {
+            sj.add("\uD83C\uDFC6 Задача выполнена");
+        } else {
+            sj.add("");
+            sj.add("🕵️‍♂️ <b>Текущий статус задачи:</b>");
+            status = appendGroupStatus(sj, group, event);
+            appendStateInformation(sj);
+        }
 
         doOnReady.accept(sj.toString(), TaskKeyboardFormer.makeKeyboard(this, false, List.of(), status));
     }
@@ -352,13 +378,19 @@ public class TaskContext {
             final var sj = prepareShortTaskMessage(author, task, type);
             sj.add("#tasks #tid" + id);
 
-            sj.add("");
-            sj.add("🕵️‍♂️ <b>Текущий статус задачи:</b>");
             final var groupsWithStatus = new ArrayList<TaskStatusChange>();
-            for (final var group : groups) {
-                final var status = appendGroupStatus(sj, group, event);
-                if (status != null) {
-                    groupsWithStatus.add(status);
+            if (isCancelled()) {
+                sj.add("❌ Задача отменена");
+            } else if (isFinalized()) {
+                sj.add("\uD83C\uDFC6 Задача выполнена");
+            } else {
+                sj.add("");
+                sj.add("🕵️‍♂️ <b>Текущий статус задачи:</b>");
+                for (final var group : groups) {
+                    final var status = appendGroupStatus(sj, group, event);
+                    if (status != null) {
+                        groupsWithStatus.add(status);
+                    }
                 }
             }
 
@@ -380,15 +412,22 @@ public class TaskContext {
         final var userContextService = UserContextService.getInstance();
 
         final var eventGroup = event.findGroupByName(group);
-        sj.add("");
 
         final var status = taskStatusChangeService.findMostRecent(id, eventGroup.getShortName());
         //log.debug ("Most recent status change for {} task and {} group : {}", id, group, status);
 
+        if (!isCheck()) {
+            sj.add("");
+        }
+
         if (status == null) {
             sj.add("<i><u>" + eventGroup.getDisplayName() + ":</u></i> 🙈 Не заметили задание");
         } else if (isCheck()) {
-            sj.add("[Not implemented for check tasks yet]");
+            final var changeAuthor = userContextService.findContextForExistingUser(status.getAuthorId());
+
+            sj.add(
+                    "<i><u>" + eventGroup.getDisplayName() + ":</u></i> " + status.getContent() + " @" + changeAuthor.getUsername() + " в " + DateUtils.dateFormatShort.format(status.getChangeDate())
+            );
         } else if (isQuestion()) {
             final var changeAuthor = userContextService.findContextForExistingUser(status.getAuthorId());
 

@@ -175,6 +175,10 @@ public class CommonChatContext implements ChatContext {
                 checkAndCall(user, UserRole.PARTICIPANT, () -> answerToTask(user, message, command.b));
             case "/activationtask" ->
                 checkAndCall(user, UserRole.MODERATOR, () -> changeTaskActivation(user, message, command.b));
+            case "/cancellationtask" ->
+                checkAndCall(user, UserRole.MODERATOR, () -> changeTaskCancellation(user, command.b));
+            case "/finallizationtask" ->
+                checkAndCall(user, UserRole.MODERATOR, () -> changeTaskFinalization(user, command.b));
             case "/createtask" -> checkAndCall(user, UserRole.MODERATOR, () -> createTask(user, message, command.b));
             case "/dropmessage" -> checkAndCall(user, UserRole.UNKNOWN, () -> dropMessage(message));
             case "/edittask" -> checkAndCall(user, UserRole.MODERATOR, () -> editTask(user, message, command.b));
@@ -256,8 +260,8 @@ public class CommonChatContext implements ChatContext {
         final var task = taskContextService.findContext(id);
         if (task == null) {
             throw new CommandProcessingException("<b>Ошибка в запросе:</b>\nЗадача не найдена");
-        } else if (task.isDisabled()) {
-            throw new CommandProcessingException("<b>Ответ не был записан:</b>\nЗадача приостановлена и изменить ответ в данный момент нельзя");
+        } else if (!task.isEnabled()) {
+            throw new CommandProcessingException("<b>Ответ не был записан:</b>\nЗадача " + task.getState().getPresentation() + " и изменить ответ в данный момент нельзя");
         }
 
         taskStatusChangeService.addChange(task, answer, message, user);
@@ -285,7 +289,7 @@ public class CommonChatContext implements ChatContext {
 
             final var taskContext = taskContextService.createContext(user, taskMessage, parsedQuery);
             for (final var group : taskContext.getGroups()) {
-                taskContext.broadcastTaskForGroup(group);
+                taskContext.broadcastTaskForGroup(group, taskContext);
             }
         } catch (TelegramApiException tapie) {
             log.error("Failed to send message", tapie);
@@ -308,7 +312,48 @@ public class CommonChatContext implements ChatContext {
         parsedQuery.setEvent(event);
 
         taskContext.setState(user, taskContext.isEnabled() ? TaskState.DISABLED : TaskState.ENABLED);
+        broadcastGroups(taskContext);
+    }
 
+    private void changeTaskCancellation(UserContext user, String query) throws CommandProcessingException {
+        final var parsedQuery = InlineQueryProcessor.parseQuery(query);
+        TaskCommandValidator.checkError(parsedQuery);
+        TaskCommandValidator.checkId(parsedQuery);
+
+        final var id = parsedQuery.getId();
+
+        final var taskContext = taskContextService.findContext(id);
+        if (taskContext == null) {
+            throw new CommandProcessingException("<b>Ошибка в запросе:</b>\nЗадача не найдена");
+        }
+
+        final var event = ConfigurationHolder.getConfigurationFromSingleton().getEvent();
+        parsedQuery.setEvent(event);
+
+        taskContext.setState(user, taskContext.isCancelled() ? TaskState.ENABLED : TaskState.CANCELLED);
+        broadcastGroups(taskContext);
+    }
+
+    private void changeTaskFinalization(UserContext user, String query) throws CommandProcessingException {
+        final var parsedQuery = InlineQueryProcessor.parseQuery(query);
+        TaskCommandValidator.checkError(parsedQuery);
+        TaskCommandValidator.checkId(parsedQuery);
+
+        final var id = parsedQuery.getId();
+
+        final var taskContext = taskContextService.findContext(id);
+        if (taskContext == null) {
+            throw new CommandProcessingException("<b>Ошибка в запросе:</b>\nЗадача не найдена");
+        }
+
+        final var event = ConfigurationHolder.getConfigurationFromSingleton().getEvent();
+        parsedQuery.setEvent(event);
+
+        taskContext.setState(user, taskContext.isFinalized() ? TaskState.ENABLED : TaskState.FINALIZED);
+        broadcastGroups(taskContext);
+    }
+
+    private static void broadcastGroups(TaskContext taskContext) {
         for (final var group : taskContext.getGroups()) {
             taskContext.broadcastTaskUpdateForGroup(group, taskContext.isEnabled());
         }
