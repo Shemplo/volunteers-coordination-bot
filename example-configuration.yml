@@ -8,6 +8,7 @@ credentials:
     roleAuthentication:
         PARTICIPANT: a
         MODERATOR: b
+mentionTaskAuthor: false
 database:
     # Filename (path) of database
     filename: database-name.db
