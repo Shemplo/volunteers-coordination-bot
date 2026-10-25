@@ -467,13 +467,16 @@ public class TaskContext {
         final var isCheck = TYPE_CHECK.equals(type);
         final var isQuestion = TYPE_QUESTION.equals(type);
         final var isTask = TYPE_TASK.equals(type);
+        final var mentionAuthor = ConfigurationHolder.getConfigurationFromSingleton().isMentionTaskAuthor();
+        final var authorTag = "@" + user.getUsername();
+        final var authorSuffix = (mentionAuthor ? authorTag : "<code>" + authorTag + "</code>");
 
         if (isCheck) {
-            sj.add("‼️ <b>Новая проверка от</b> @" + user.getUsername() + " ‼️");
+            sj.add("‼️ <b>Новая проверка от</b> " + authorSuffix + " ‼️");
         } else if (isQuestion) {
-            sj.add("‼️ <b>Новый вопрос от</b> @" + user.getUsername() + " ‼️");
+            sj.add("‼️ <b>Новый вопрос от</b> " + authorSuffix + " ‼️");
         } else if (isTask) {
-            sj.add("‼️ <b>Новая задача от</b> @" + user.getUsername() + " ‼️");
+            sj.add("‼️ <b>Новая задача от</b> " + authorSuffix + " ‼️");
         } else {
             throw new IllegalStateException("Unknown state");
         }

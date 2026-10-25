@@ -15,5 +15,6 @@ public class BotConfiguration {
     private BotDatabaseConfiguration database;
     private BotEventConfiguration event;
     private BotProxyConfiguration proxy;
+    private boolean mentionTaskAuthor = false;
 
 }
