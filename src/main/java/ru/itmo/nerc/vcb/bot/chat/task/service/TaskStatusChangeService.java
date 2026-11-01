@@ -30,8 +30,8 @@ public class TaskStatusChangeService {
         return instance;
     }
 
-    public TaskStatusChange addChange(TaskContext task, String content, Message message, UserContext user) {
-        final var change = TaskStatusChange.builder().changeDate(new Date()).chatId(message != null ? message.getChatId() : null).content(content).messageId(message != null ? message.getMessageId() : null).taskId(task.getId()).user(user).build();
+    public TaskStatusChange addChange(TaskContext task, String content, Message message, UserContext user, String group) {
+        final var change = TaskStatusChange.builder().group(group).changeDate(new Date()).chatId(message != null ? message.getChatId() : null).content(content).messageId(message != null ? message.getMessageId() : null).taskId(task.getId()).user(user).build();
         change.persist();
 
         return change;
@@ -52,7 +52,7 @@ public class TaskStatusChangeService {
                     if (queryResult.next()) {
                         return null;
                     } else {
-                        final var change = TaskStatusChange.builder().changeDate(new Date()).content(content).taskId(task.getId()).user(user).build();
+                        final var change = TaskStatusChange.builder().group(user.getGroup()).changeDate(new Date()).content(content).taskId(task.getId()).user(user).build();
                         change.persist();
 
                         return change;

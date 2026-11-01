@@ -143,33 +143,29 @@ public class InlineQueryProcessor implements TelegramChildBot, SupervisedRunnabl
                 }
             }
         } else if (parsedQuery.getAnswer() != null) {
-            if (user.getGroup() == null) {
-                options.add(prepareErrorResult("Невозможно обновить статус задачи", "Вы не состоите ни в какой группе"));
-            } else {
-                if (parsedQuery.getId() == null) {
-                    options.add(prepareErrorResult("Невозможно обновить статус задачи", "Не указан идентификатор (id)"));
-                } else if (parsedQuery.getId() != null) {
-                    final var task = taskContextService.findContext(parsedQuery.getId());
-                    if (task != null && task.isEnabled()) {
-                        final var status = taskStatusChangeService.addNoticedChange(task, "👀 Заметили задание", user);
-                        if (status != null) {
-                            task.updateMessage();
-                            task.broadcastTaskForGroup(user.getGroup(), task);
-                        }
+            if (parsedQuery.getId() == null) {
+                options.add(prepareErrorResult("Невозможно обновить статус задачи", "Не указан идентификатор (id)"));
+            } else if (parsedQuery.getId() != null) {
+                final var task = taskContextService.findContext(parsedQuery.getId());
+                if (task != null && task.isEnabled() && user.getGroup() != null) {
+                    final var status = taskStatusChangeService.addNoticedChange(task, "👀 Заметили задание", user);
+                    if (status != null) {
+                        task.updateMessage();
+                        task.broadcastTaskForGroup(user.getGroup(), task);
                     }
+                }
 
-                    if (task == null) {
-                        options.add(prepareErrorResult("Невозможно обновить статус задачи", "Указан неверный идентификатор (id)"));
-                    } else if (task.isDisabled() || task.isCancelled()) {
-                        options.add(prepareErrorResult("Невозможно обновить статус задачи", "Задача " + task.getState().getPresentation()));
-                    } else if (parsedQuery.getAnswer().length() == 0) {
-                        options.add(prepareAnswerResult(parsedQuery.getId(), "Уже смотрим", EYES_ICON));
-                        options.add(prepareAnswerResult(parsedQuery.getId(), "Нужна помощь ТК", NEED_HELP_ICON));
-                        options.add(prepareAnswerResult(parsedQuery.getId(), "Починили/исправили", FIXED_ICON));
-                        options.add(prepareAnswerResult(parsedQuery.getId(), "Всё в порядке", OK_ICON));
-                    } else {
-                        options.add(prepareAnswerResult(parsedQuery.getId(), parsedQuery.getAnswer(), MESSAGE_ICON));
-                    }
+                if (task == null) {
+                    options.add(prepareErrorResult("Невозможно обновить статус задачи", "Указан неверный идентификатор (id)"));
+                } else if (task.isDisabled() || task.isCancelled()) {
+                    options.add(prepareErrorResult("Невозможно обновить статус задачи", "Задача " + task.getState().getPresentation()));
+                } else if (parsedQuery.getAnswer().length() == 0) {
+                    options.add(prepareAnswerResult(parsedQuery.getId(), "Уже смотрим", EYES_ICON));
+                    options.add(prepareAnswerResult(parsedQuery.getId(), "Нужна помощь ТК", NEED_HELP_ICON));
+                    options.add(prepareAnswerResult(parsedQuery.getId(), "Починили/исправили", FIXED_ICON));
+                    options.add(prepareAnswerResult(parsedQuery.getId(), "Всё в порядке", OK_ICON));
+                } else {
+                    options.add(prepareAnswerResult(parsedQuery.getId(), parsedQuery.getAnswer(), MESSAGE_ICON));
                 }
             }
         } else if (parsedQuery.getKey() != null) {

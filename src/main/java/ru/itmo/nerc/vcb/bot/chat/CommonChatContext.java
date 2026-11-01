@@ -1,5 +1,7 @@
 package ru.itmo.nerc.vcb.bot.chat;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -35,6 +37,7 @@ import ru.itmo.nerc.vcb.bot.chat.task.service.TaskContextService;
 import ru.itmo.nerc.vcb.bot.chat.task.service.TaskStatusChangeService;
 import ru.itmo.nerc.vcb.bot.chat.task.utils.TaskCommandValidator;
 import ru.itmo.nerc.vcb.bot.chat.utils.ChatUtils;
+import ru.itmo.nerc.vcb.bot.chat.task.utils.TaskUtils;
 import ru.itmo.nerc.vcb.bot.user.UserContext;
 import ru.itmo.nerc.vcb.bot.user.UserContextService;
 import ru.itmo.nerc.vcb.bot.user.UserRole;
@@ -253,7 +256,11 @@ public class CommonChatContext implements ChatContext {
         TaskCommandValidator.checkId(parsedQuery);
         final var id = parsedQuery.getId();
 
-        TaskCommandValidator.checkUserGroup(user, id);
+        final var defaultGroups = chatId < 0 ? chatMetaInformationService.findOrCreateByChatAndKey(chatId, messageThreadId, ChatMetaInformation.KEY_DEFAULT_GROUPS).getValue() : null;
+        final var groups = defaultGroups == null || defaultGroups.isBlank() ? (user.getGroup() == null ? List.<String>of() : List.of(user.getGroup())) : TaskUtils.decideGroups(ConfigurationHolder.getConfigurationFromSingleton().getEvent(), Arrays.asList(defaultGroups.split("\\s*,\\s*"))).a;
+        if (groups.isEmpty()) {
+            TaskCommandValidator.checkUserGroup(user, id);
+        }
 
         final var answer = parsedQuery.getAnswer();
 
@@ -264,10 +271,14 @@ public class CommonChatContext implements ChatContext {
             throw new CommandProcessingException("<b>Ответ не был записан:</b>\nЗадача " + task.getState().getPresentation() + " и изменить ответ в данный момент нельзя");
         }
 
-        taskStatusChangeService.addChange(task, answer, message, user);
+        for (final var group : groups) {
+            taskStatusChangeService.addChange(task, answer, message, user, group);
+        }
 
         task.updateMessage();
-        task.broadcastTaskUpdateForGroup(user.getGroup(), false);
+        for (final String group : groups) {
+            task.broadcastTaskUpdateForGroup(group, false);
+        }
     }
 
     private void createTask(UserContext user, Message message, String query) throws CommandProcessingException {

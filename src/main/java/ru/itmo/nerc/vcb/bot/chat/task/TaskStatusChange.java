@@ -29,9 +29,9 @@ public class TaskStatusChange {
     private final long authorId;
 
     @Builder
-    public TaskStatusChange(long taskId, String content, Long chatId, Integer messageId, Date changeDate, UserContext user) {
+    public TaskStatusChange(long taskId, String content, Long chatId, Integer messageId, Date changeDate, UserContext user, String group) {
         this.authorId = user.getUserId();
-        this.group = user.getGroup();
+        this.group = group;
         this.changeDate = changeDate;
         this.chatId = chatId;
         this.content = content;
